@@ -21,12 +21,11 @@ library(weathermetrics)
 ##Variates and responses ("dat")
 #### Alexander Pond 
 ```{r, include=FALSE}
-# Responses are daily temperature maximums and daily temperature amplitude for multiple ponds. 
 AP1 <- read.csv("Alexander_SN_20870137.csv")
 AP1$date <- lubridate::mdy_hm(AP1$Date_Time)
 plot(AP1$date, AP1$Temp)
 plot(AP1$date, AP1$Intensity)#Note: Something wrong with intensity values starting in April??
-head(AP1, n = 1800) #Need to remove first 4 values (not in the water yet)
+head(AP1, n = 50) #Need to remove first 4 values (not in the water yet)
 tail(AP1, n = 100) #Need to remove last 8 values. Sensor was dying and repeated a measurement at 11:00, removed at 10:45 to be safe. 
 AP1 <- AP1[c(4:30126),] 
 str(AP1) #Now we have 30123 observations
@@ -34,12 +33,162 @@ head(AP1)
 tail(AP1)
 missing_data <- AP1[!complete.cases(AP1),] #Missing data at 10:37 on 28 July 2020 when sensor was read. Deleted these in .csv file
 missing_data
+
 #Convert to time series
-AP1ts <- ts(AP1$Temp, start = c(10, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on JAP1y 10 at 16:15, or the 65th increment
-ts.plot(AP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+AP1ts <- ts(AP1$Temp, start = c(10, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 16:15, or the 65th increment
+ts.plot(AP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+
 #calculate daily mean, max, min, and amplitude
 AP1$day <- lubridate::day(AP1$date)
 AP1_daily <- AP1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+```{r, include = FALSE}
+AP2 <- read.csv("Alexander_SN_20878648.csv")
+AP2$date <- lubridate::mdy_hm(AP2$Date_Time)
+plot(AP2$date, AP2$Temp)
+head(AP2, n = 50) #Need to remove first 6 values (not in the water yet)
+tail(AP2, n = 50) #Last NAs already removed in .csv file. Note that sensor failed on 1 October 2020
+AP2 <- AP2[c(7:7976),] 
+str(AP2) #Now we have 7970  observations
+head(AP2)
+tail(AP2)
+missing_data <- AP2[!complete.cases(AP2),] 
+missing_data #No missing data
+
+#Convert to time series
+AP2ts <- ts(AP2$Temp, start = c(10, 68), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 17:00, or the 68th increment
+ts.plot(AP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+
+#calculate daily mean, max, min, and amplitude
+AP2$day <- lubridate::day(AP2$date)
+AP2_daily <- AP2 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+```{r, include = FALSE}
+AP3 <- read.csv("Alexander_SN_20878664.csv")
+AP3$date <- lubridate::mdy_hm(AP3$Date_Time)
+plot(AP3$date, AP3$Temp)
+head(AP3, n = 50) #Need to remove first 5 values (not in the water yet)
+tail(AP3, n = 50) #Last NAs already removed in .csv file. 
+AP3 <- AP3[c(6:35309),] 
+str(AP3) #Now we have 35304  observations
+head(AP3)
+tail(AP3)
+missing_data <- AP3[!complete.cases(AP3),] 
+missing_data#No missing data
+
+#Convert to time series
+AP3ts <- ts(AP3$Temp, start = c(10, 67), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 16:45, or the 67th increment
+ts.plot(AP3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+AP3$day <- lubridate::day(AP3$date)
+AP3_daily <- AP3 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+```{r, include = FALSE}
+APck <- read.csv("AlexanderCk_SN_20878703.csv")
+APck$date <- lubridate::mdy_hm(APck$Date_Time)
+plot(APck$date, APck$Temp)
+head(APck, n = 100) #Need to remove first 87 values (not in the water yet)
+tail(APck, n = 500) #Last NAs already removed in .csv file. Sensor seems like it might be out of the water somewhere in late Jan 2021
+APck <- APck[c(88:35309),] 
+str(APck) #Now we have 35222  observations
+head(APck)
+tail(APck)
+missing_data <- APck[!complete.cases(APck),] 
+missing_data #No missing data
+
+#Convert to time series
+APckts <- ts(APck$Temp, start = c(11, 53), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 13:15, or the 53th increment
+ts.plot(APckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+
+#calculate daily mean, max, min, and amplitude
+APck$day <- lubridate::day(APck$date)
+APck_daily <- APck %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+#####Stender Pond
+```{r, include = FALSE}
+SP1 <- read.csv("Stender_SN_20870127.csv")
+SP1$date <- lubridate::mdy_hm(SP1$Date_Time)
+plot(SP1$date, SP1$Temp)
+head(SP1, n = 100) #Need to remove first 11 values (not in the water yet) 
+tail(SP1) #Last NAs already removed in .csv file.
+SP1 <- SP1[c(12:35241),] 
+str(SP1) #Now we have 35230  observations
+head(SP1)
+tail(SP1)
+missing_data <- SP1[!complete.cases(SP1),] 
+missing_data #No missing data
+
+#Convert to time series
+SP1ts <- ts(SP1$Temp, start = c(11, 66), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 16:30, or the 66th increment
+ts.plot(SP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+SP1$day <- lubridate::day(SP1$date)
+SP1_daily <- SP1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = FALSE}
+SPout <- read.csv("StenderOut_SN_20878705.csv")
+SPout$date <- lubridate::mdy_hm(SPout$Date_Time)
+plot(SPout$date, SPout$Temp)
+head(SPout, n = 100) #Need to remove first 10 values (never in the water, in a dry outflow channel)
+tail(SPout) #Last NAs already removed in .csv file.
+SPout <- SPout[c(11:35240),] 
+str(SPout) #Now we have 35230  observations
+head(SPout)
+tail(SPout)
+missing_data <- SPout[!complete.cases(SPout),] 
+missing_data #No missing data
+
+#Convert to time series
+SPoutts <- ts(SPout$Temp, start = c(11, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 16:15, or the 65th increment
+ts.plot(SPoutts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+SPout$day <- lubridate::day(SPout$date)
+SPout_daily <- SPout %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = FALSE}
+SP2 <- read.csv("Stender_SN_20878711.csv")
+SP2$date <- lubridate::mdy_hm(SP2$Date_Time)
+plot(SP2$date, SP2$Temp)
+head(SP2, n = 100) #Need to remove first 8 values
+tail(SP2, n = 800) #Last NAs already removed in .csv file.
+SP2 <- SP2[c(9:33614),] 
+str(SP2) #Now we have 33606  observations
+head(SP2)
+tail(SP2)
+missing_data <- SP2[!complete.cases(SP2),] 
+missing_data #No missing data
+
+#Convert to time series
+SP2ts <- ts(SP2$Temp, start = c(11, 63), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on JSP2y 11 at 15:45, or the 63th increment
+ts.plot(SP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+SP2$day <- lubridate::day(SP2$date)
+SP2_daily <- SP2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
 ```
