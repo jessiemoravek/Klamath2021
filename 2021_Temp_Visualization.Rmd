@@ -1,0 +1,45 @@
+---
+title: "2021_Temp_Visualization"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+library(astsa)
+library(forecast)
+library(dplyr)
+library(pander)
+library(MARSS)
+library(MASS)
+library(gridExtra)
+library(weathermetrics)
+```
+
+##Variates and responses ("dat")
+#### Alexander Pond 
+```{r, include=FALSE}
+# Responses are daily temperature maximums and daily temperature amplitude for multiple ponds. 
+AP1 <- read.csv("Alexander_SN_20870137.csv")
+AP1$date <- lubridate::mdy_hm(AP1$Date_Time)
+plot(AP1$date, AP1$Temp)
+plot(AP1$date, AP1$Intensity)#Note: Something wrong with intensity values starting in April??
+head(AP1, n = 1800) #Need to remove first 4 values (not in the water yet)
+tail(AP1, n = 100) #Need to remove last 8 values. Sensor was dying and repeated a measurement at 11:00, removed at 10:45 to be safe. 
+AP1 <- AP1[c(4:30126),] 
+str(AP1) #Now we have 30123 observations
+head(AP1)
+tail(AP1)
+missing_data <- AP1[!complete.cases(AP1),] #Missing data at 10:37 on 28 July 2020 when sensor was read. Deleted these in .csv file
+missing_data
+#Convert to time series
+AP1ts <- ts(AP1$Temp, start = c(10, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on JAP1y 10 at 16:15, or the 65th increment
+ts.plot(AP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#calculate daily mean, max, min, and amplitude
+AP1$day <- lubridate::day(AP1$date)
+AP1_daily <- AP1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
