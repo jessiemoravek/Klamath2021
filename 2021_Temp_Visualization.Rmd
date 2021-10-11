@@ -3,6 +3,12 @@ title: "2021_Temp_Visualization"
 output: html_document
 ---
 
+Standing questions for Albert:
+-Stender Pond SN 20878650 is for some reason reading on offset 15 min intervals (i.e. starting on 16:37?) How should I deal with this? 
+-If I can tell a sensor was out of the water, do I remove those datapoints? 
+-How do I deal with datasets that are missing several months of data? 
+
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -170,13 +176,43 @@ SPout_daily <- SPout %>%
 
 
 ```{r, include = FALSE}
-SP2 <- read.csv("Stender_SN_20878711.csv")
-SP2$date <- lubridate::mdy_hm(SP2$Date_Time)
-plot(SP2$date, SP2$Temp)
-head(SP2, n = 100) #Need to remove first 8 values
-tail(SP2, n = 800) #Last NAs already removed in .csv file.
-SP2 <- SP2[c(9:33614),] 
-str(SP2) #Now we have 33606  observations
+#SN 650 (11 - 28 July 2020)
+SP2a <- read.csv("StenderRm_SN_20878650.csv")
+SP2a$date <- lubridate::mdy_hm(SP2a$Date_Time)
+plot(SP2a$date, SP2a$Temp)
+head(SP2a, n = 100) #Need to remove first 8 values
+tail(SP2a, n = 800) #Need to remove NAs in the last several days and get up to 12:30 when next sensor was placed. Lots of weird NAs to remove
+SP2a <- SP2a[c(9:1625,1661:1662),] 
+str(SP2a) #Now we have 1619 observations
+head(SP2a)
+tail(SP2a)
+missing_data <- SP2a[!complete.cases(SP2a),]
+missing_data #No missing data
+```
+
+
+```{r, include = FALSE}
+#SN 711 (28 July 2020 - 13 July 2021)
+SP2b <- read.csv("Stender_SN_20878711.csv")
+SP2b$date <- lubridate::mdy_hm(SP2b$Date_Time)
+plot(SP2b$date, SP2b$Temp)
+head(SP2b, n = 100) #Need to remove first value to match with SN 650
+tail(SP2b, n = 800) #Last NAs already removed in .csv file.
+SP2b <- SP2b[c(2:33614),] 
+str(SP2b) #Now we have 33613 observations
+head(SP2b)
+tail(SP2b)
+missing_data <- SP2b[!complete.cases(SP2b),] 
+missing_data #No missing data
+```
+
+
+```{r, include = FALSE}
+##Combine SN 650 and SN 711 (711 replaced 650 on 28 July 2020 at ~12:15)
+#SP2 is 11 July 2020 - 13 July 2021
+
+SP2 <- rbind(SP2a,SP2b)
+str(SP2) #Now we have 35232  observations
 head(SP2)
 tail(SP2)
 missing_data <- SP2[!complete.cases(SP2),] 
@@ -184,11 +220,36 @@ missing_data #No missing data
 
 #Convert to time series
 SP2ts <- ts(SP2$Temp, start = c(11, 63), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on JSP2y 11 at 15:45, or the 63th increment
-ts.plot(SP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+ts.plot(SP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
 
 #calculate daily mean, max, min, and amplitude
 SP2$day <- lubridate::day(SP2$date)
 SP2_daily <- SP2 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = FALSE}
+SPck <- read.csv("StenderCk_SN_20870136.csv")
+SPck$date <- lubridate::mdy_hm(SPck$Date_Time)
+plot(SPck$date, SPck$Temp)
+head(SPck, n = 100) #Need to remove first 5 values. Also remove 1140:1141 on 28 July 2020 when sensor was reset 
+tail(SPck, n = 800) #Sensor started to fail on 15 April 2021, removed last day of readings. Note that sensor failed on 16 April 2021
+SPck <- SPck[c(6:1139,1142:26240),] 
+str(SPck) #Now we have 26233 observations
+head(SPck)
+tail(SPck)
+missing_data <- SPck[!complete.cases(SPck),] #No missing data
+missing_data
+
+#Convert to time series
+SPckts <- ts(SPck$Temp, start = c(16, 75), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 16 at 18:45, or the 75th increment
+ts.plot(SPckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+SPck$day <- lubridate::day(SPck$date)
+SPck_daily <- SPck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
 ```
