@@ -25,6 +25,8 @@ library(weathermetrics)
 ```
 
 ##Variates and responses ("dat")
+
+### Cleaning datasets, and aligning dates
 #### Alexander Pond 
 ```{r, include=FALSE}
 AP1 <- read.csv("Alexander_SN_20870137.csv")
@@ -35,20 +37,24 @@ head(AP1, n = 50) #Need to remove first 4 values (not in the water yet)
 tail(AP1, n = 100) #Need to remove last 8 values. Sensor was dying and repeated a measurement at 11:00, removed at 10:45 to be safe. 
 AP1 <- AP1[c(4:30126),] 
 str(AP1) #Now we have 30123 observations
-head(AP1)
-tail(AP1)
 missing_data <- AP1[!complete.cases(AP1),] #Missing data at 10:37 on 28 July 2020 when sensor was read. Deleted these in .csv file
 missing_data
 
-#Convert to time series
-AP1ts <- ts(AP1$Temp, start = c(10, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 16:15, or the 65th increment
-ts.plot(AP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+#Position dataset into a full year data frame by daily steps
+AP1$day <- lubridate::floor_date(AP1$date, unit="day") #Bin by day
+head(AP1, n=70) #check the dataset start date
+tail(AP1) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+AP1 <- left_join(day, AP1) #join day and dataset
+str(AP1)
 
-#calculate daily mean, max, min, and amplitude
-AP1$day <- lubridate::day(AP1$date)
+#Group by day and calculate mean, max, min, amp
 AP1_daily <- AP1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 ```{r, include = FALSE}
@@ -59,20 +65,24 @@ head(AP2, n = 50) #Need to remove first 6 values (not in the water yet)
 tail(AP2, n = 50) #Last NAs already removed in .csv file. Note that sensor failed on 1 October 2020
 AP2 <- AP2[c(7:7976),] 
 str(AP2) #Now we have 7970  observations
-head(AP2)
-tail(AP2)
 missing_data <- AP2[!complete.cases(AP2),] 
 missing_data #No missing data
 
-#Convert to time series
-AP2ts <- ts(AP2$Temp, start = c(10, 68), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 17:00, or the 68th increment
-ts.plot(AP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+#Position dataset into a full year data frame by daily steps
+AP2$day <- lubridate::floor_date(AP2$date, unit="day") #Bin by day
+head(AP2, n=70) #check the dataset start date
+tail(AP2) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+AP2 <- left_join(day, AP2) #join day and dataset
+str(AP2)
 
-#calculate daily mean, max, min, and amplitude
-AP2$day <- lubridate::day(AP2$date)
+#Group by day and calculate mean, max, min, amp
 AP2_daily <- AP2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 ```{r, include = FALSE}
@@ -83,20 +93,24 @@ head(AP3, n = 50) #Need to remove first 5 values (not in the water yet)
 tail(AP3, n = 50) #Last NAs already removed in .csv file. 
 AP3 <- AP3[c(6:35309),] 
 str(AP3) #Now we have 35304  observations
-head(AP3)
-tail(AP3)
 missing_data <- AP3[!complete.cases(AP3),] 
 missing_data#No missing data
 
-#Convert to time series
-AP3ts <- ts(AP3$Temp, start = c(10, 67), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 16:45, or the 67th increment
-ts.plot(AP3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+AP3$day <- lubridate::floor_date(AP3$date, unit="day") #Bin by day
+head(AP3, n=70) #check the dataset start date
+tail(AP3) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+AP3 <- left_join(day, AP3) #join day and dataset
+str(AP3)
 
-#calculate daily mean, max, min, and amplitude
-AP3$day <- lubridate::day(AP3$date)
+#Group by day and calculate mean, max, min, amp
 AP3_daily <- AP3 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 ```{r, include = FALSE}
@@ -107,20 +121,24 @@ head(APck, n = 100) #Need to remove first 87 values (not in the water yet)
 tail(APck, n = 500) #Last NAs already removed in .csv file. Sensor seems like it might be out of the water somewhere in late Jan 2021
 APck <- APck[c(88:35309),] 
 str(APck) #Now we have 35222  observations
-head(APck)
-tail(APck)
 missing_data <- APck[!complete.cases(APck),] 
 missing_data #No missing data
 
-#Convert to time series
-APckts <- ts(APck$Temp, start = c(11, 53), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 13:15, or the 53th increment
-ts.plot(APckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+#Position dataset into a full year data frame by daily steps
+APck$day <- lubridate::floor_date(APck$date, unit="day") #Bin by day
+head(APck, n=70) #check the dataset start date
+tail(APck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+APck <- left_join(day, APck) #join day and dataset
+str(APck)
 
-#calculate daily mean, max, min, and amplitude
-APck$day <- lubridate::day(APck$date)
+#Group by day and calculate mean, max, min, amp
 APck_daily <- APck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -133,20 +151,24 @@ head(SP1, n = 100) #Need to remove first 11 values (not in the water yet)
 tail(SP1) #Last NAs already removed in .csv file.
 SP1 <- SP1[c(12:35241),] 
 str(SP1) #Now we have 35230  observations
-head(SP1)
-tail(SP1)
 missing_data <- SP1[!complete.cases(SP1),] 
 missing_data #No missing data
 
-#Convert to time series
-SP1ts <- ts(SP1$Temp, start = c(11, 66), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 16:30, or the 66th increment
-ts.plot(SP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+SP1$day <- lubridate::floor_date(SP1$date, unit="day") #Bin by day
+head(SP1, n=70) #check the dataset start date
+tail(SP1) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+SP1 <- left_join(day, SP1) #join day and dataset
+str(SP1)
 
-#calculate daily mean, max, min, and amplitude
-SP1$day <- lubridate::day(SP1$date)
+#Group by day and calculate mean, max, min, amp
 SP1_daily <- SP1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -158,20 +180,24 @@ head(SPout, n = 100) #Need to remove first 10 values (never in the water, in a d
 tail(SPout) #Last NAs already removed in .csv file.
 SPout <- SPout[c(11:35240),] 
 str(SPout) #Now we have 35230  observations
-head(SPout)
-tail(SPout)
 missing_data <- SPout[!complete.cases(SPout),] 
 missing_data #No missing data
 
-#Convert to time series
-SPoutts <- ts(SPout$Temp, start = c(11, 65), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 11 at 16:15, or the 65th increment
-ts.plot(SPoutts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+SPout$day <- lubridate::floor_date(SPout$date, unit="day") #Bin by day
+head(SPout, n=70) #check the dataset start date
+tail(SPout) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+SPout <- left_join(day, SPout) #join day and dataset
+str(SPout)
 
-#calculate daily mean, max, min, and amplitude
-SPout$day <- lubridate::day(SPout$date)
+#Group by day and calculate mean, max, min, amp
 SPout_daily <- SPout %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -184,8 +210,6 @@ head(SP2a, n = 100) #Need to remove first 8 values
 tail(SP2a, n = 800) #Need to remove NAs in the last several days and get up to 12:30 when next sensor was placed. Lots of weird NAs to remove
 SP2a <- SP2a[c(9:1625,1661:1662),] 
 str(SP2a) #Now we have 1619 observations
-head(SP2a)
-tail(SP2a)
 missing_data <- SP2a[!complete.cases(SP2a),]
 missing_data #No missing data
 ```
@@ -200,8 +224,6 @@ head(SP2b, n = 100) #Need to remove first value to match with SN 650
 tail(SP2b, n = 800) #Last NAs already removed in .csv file.
 SP2b <- SP2b[c(2:33614),] 
 str(SP2b) #Now we have 33613 observations
-head(SP2b)
-tail(SP2b)
 missing_data <- SP2b[!complete.cases(SP2b),] 
 missing_data #No missing data
 ```
@@ -213,20 +235,24 @@ missing_data #No missing data
 
 SP2 <- rbind(SP2a,SP2b)
 str(SP2) #Now we have 35232  observations
-head(SP2)
-tail(SP2)
 missing_data <- SP2[!complete.cases(SP2),] 
 missing_data #No missing data
 
-#Convert to time series
-SP2ts <- ts(SP2$Temp, start = c(11, 63), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on JSP2y 11 at 15:45, or the 63th increment
-ts.plot(SP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
+#Position dataset into a full year data frame by daily steps
+SP2$day <- lubridate::floor_date(SP2$date, unit="day") #Bin by day
+head(SP2, n=70) #check the dataset start date
+tail(SP2) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+SP2 <- left_join(day, SP2) #join day and dataset
+str(SP2)
 
-#calculate daily mean, max, min, and amplitude
-SP2$day <- lubridate::day(SP2$date)
+#Group by day and calculate mean, max, min, amp
 SP2_daily <- SP2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -238,20 +264,24 @@ head(SPck, n = 100) #Need to remove first 5 values. Also remove 1140:1141 on 28 
 tail(SPck, n = 800) #Sensor started to fail on 15 April 2021, removed last day of readings. Note that sensor failed on 16 April 2021
 SPck <- SPck[c(6:1139,1142:26240),] 
 str(SPck) #Now we have 26233 observations
-head(SPck)
-tail(SPck)
 missing_data <- SPck[!complete.cases(SPck),] #No missing data
 missing_data
 
-#Convert to time series
-SPckts <- ts(SPck$Temp, start = c(16, 75), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 16 at 18:45, or the 75th increment
-ts.plot(SPckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+SPck$day <- lubridate::floor_date(SPck$date, unit="day") #Bin by day
+head(SPck, n=70) #check the dataset start date
+tail(SPck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+SPck <- left_join(day, SPck) #join day and dataset
+str(SPck)
 
-#calculate daily mean, max, min, and amplitude
-SPck$day <- lubridate::day(SPck$date)
+#Group by day and calculate mean, max, min, amp
 SPck_daily <- SPck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 #####Durazo Pond
@@ -263,20 +293,24 @@ head(Durazo, n = 100) #Need to remove first 9 values
 tail(Durazo) #NAs removed in excel
 Durazo <- Durazo[c(10:35019),] 
 str(Durazo) #Now we have 35010  observations
-head(Durazo)
-tail(Durazo)
 missing_data <- Durazo[!complete.cases(Durazo),] 
 missing_data #No missing data
 
-#Convert to time series
-Durazots <- ts(Durazo$Temp, start = c(13, 69), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 17:15, or the 69th increment
-ts.plot(Durazots,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+Durazo$day <- lubridate::floor_date(Durazo$date, unit="day") #Bin by day
+head(Durazo, n=70) #check the dataset start date
+tail(Durazo) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+Durazo <- left_join(day, Durazo) #join day and dataset
+str(Durazo)
 
-#calculate daily mean, max, min, and amplitude
-Durazo$day <- lubridate::day(Durazo$date)
+#Group by day and calculate mean, max, min, amp
 Durazo_daily <- Durazo %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 
 ```
 
@@ -290,17 +324,20 @@ head(LS, n = 100) #Need to remove first 3 values
 tail(LS) #Last several NAs removed in excel 
 LS <- LS[c(4:35021),] 
 str(LS) #Now we have 35018 observations
-head(LS)
-tail(LS)
 missing_data <- LS[!complete.cases(LS),] 
 missing_data #No missing data
 
-#Convert to time series
-LSts <- ts(LS$Temp, start = c(13, 52), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 13:00, or the 52th increment
-ts.plot(LSts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+LS$day <- lubridate::floor_date(LS$date, unit="day") #Bin by day
+head(LS, n=70) #check the dataset start date
+tail(LS) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+LS <- left_join(day, LS) #join day and dataset
+str(LS)
 
-#calculate daily mean, max, min, and amplitude
-LS$day <- lubridate::day(LS$date)
+#Group by day and calculate mean, max, min, amp
 LS_daily <- LS %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
@@ -315,17 +352,20 @@ head(LSck, n = 100) #Need to remove first 4 values
 tail(LSck) #Need to remove last value
 LSck <- LSck[c(5:35020),] 
 str(LSck) #Now we have 35016  observations
-head(LSck)
-tail(LSck)
 missing_data <- LSck[!complete.cases(LSck),] #No missing data
 missing_data #No missing data
 
-#Convert to time series
-LSckts <- ts(LSck$Temp, start = c(13, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 14:00, or the 56th increment
-ts.plot(LSckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020")
+#Position dataset into a full year data frame by daily steps
+LSck$day <- lubridate::floor_date(LSck$date, unit="day") #Bin by day
+head(LSck, n=70) #check the dataset start date
+tail(LSck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+LSck <- left_join(day, LSck) #join day and dataset
+str(LSck)
 
-#calculate daily mean, max, min, and amplitude
-LSck$day <- lubridate::day(LSck$date)
+#Group by day and calculate mean, max, min, amp
 LSck_daily <- LSck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
@@ -341,17 +381,20 @@ head(May, n = 100) #Need to remove first 3 values
 tail(May, n = 400) #NAs removed in .csv file -- Note, sensor died in June and removed last several days of data 
 May <- May[c(4:1438,1443:32628),] 
 str(May) #Now we have 32621 observations
-head(May)
-tail(May)
 missing_data <- May[!complete.cases(May),] #No missing data
 missing_data #No missing data
 
-#Convert to time series
-Mayts <- ts(May$Temp, start = c(13, 46), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 11:30, or the 46th increment
-ts.plot(Mayts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+May$day <- lubridate::floor_date(May$date, unit="day") #Bin by day
+head(May, n=70) #check the dataset start date
+tail(May) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+May <- left_join(day, May) #join day and dataset
+str(May)
 
-#calculate daily mean, max, min, and amplitude
-May$day <- lubridate::day(May$date)
+#Group by day and calculate mean, max, min, amp
 May_daily <- May %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
@@ -366,17 +409,20 @@ head(MayCk, n = 100) #Need to remove first 3 values
 tail(MayCk) #All good
 MayCk <- MayCk[c(4:35028),] 
 str(MayCk) #Now we have 35025  observations
-head(MayCk)
-tail(MayCk)
 missing_data <- MayCk[!complete.cases(MayCk),]
 missing_data #No missing data
 
-#Convert to time series
-MayCkts <- ts(MayCk$Temp, start = c(13, 47), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 11:45, or the 47th increment
-ts.plot(MayCkts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+MayCk$day <- lubridate::floor_date(MayCk$date, unit="day") #Bin by day
+head(MayCk, n=70) #check the dataset start date
+tail(MayCk) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+MayCk <- left_join(day, MayCk) #join day and dataset
+str(MayCk)
 
-#calculate daily mean, max, min, and amplitude
-MayCk$day <- lubridate::day(MayCk$date)
+#Group by day and calculate mean, max, min, amp
 MayCk_daily <- MayCk %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
@@ -392,20 +438,24 @@ head(FG2, n = 50) #Need to remove first 10 values (not in the water yet)
 tail(FG2, n = 50) #Look sok 
 FG2 <- FG2[c(11:1653,1657:35244),] 
 str(FG2) #Now we have 35231 observations
-head(FG2)
-tail(FG2)
 missing_data <- FG2[!complete.cases(FG2),]
 missing_data #No missing data
 
-#Convert to time series
-FG2ts <- ts(FG2$Temp, start = c(10, 52), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 13:00, or the 52nd increment
-ts.plot(FG2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+FG2$day <- lubridate::floor_date(FG2$date, unit="day") #Bin by day
+head(FG2, n=70) #check the dataset start date
+tail(FG2) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+FG2 <- left_join(day, FG2) #join day and dataset
+str(FG2)
 
-#calculate daily mean, max, min, and amplitude
-FG2$day <- lubridate::day(FG2$date)
+#Group by day and calculate mean, max, min, amp
 FG2_daily <- FG2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -417,20 +467,24 @@ head(FG3, n = 50) #Need to remove first 8 values (not in the water yet)
 tail(FG3, n = 50) #Looks ok. 
 FG3 <- FG3[c(9:1652,1666:35242),] 
 str(FG3) #Now we have 35234  observations
-head(FG3)
-tail(FG3)
 missing_data <- FG3[!complete.cases(FG3),]
 missing_data #No missing data
 
-#Convert to time series
-FG3ts <- ts(FG3$Temp, start = c(10, 50), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 12:30, or the 50th increment
-ts.plot(FG3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+FG3$day <- lubridate::floor_date(FG3$date, unit="day") #Bin by day
+head(FG3, n=70) #check the dataset start date
+tail(FG3) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+FG3 <- left_join(day, FG3) #join day and dataset
+str(FG3)
 
-#calculate daily mean, max, min, and amplitude
-FG3$day <- lubridate::day(FG3$date)
+#Group by day and calculate mean, max, min, amp
 FG3_daily <- FG3 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -442,20 +496,24 @@ head(FGck, n = 50) #looks ok
 tail(FGck, n = 50) #looks ok
 FGck <- FGck[c(1:1640,1643:35233),] 
 str(FGck) #Now we have 35231 observations
-head(FGck)
-tail(FGck)
 missing_data <- FGck[!complete.cases(FGck),] 
 missing_data #No missing data
 
-#Convert to time series
-FGckts <- ts(FGck$Temp, start = c(10, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 14:00, or the 56th increment
-ts.plot(FGckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+FGck$day <- lubridate::floor_date(FGck$date, unit="day") #Bin by day
+head(FGck, n=70) #check the dataset start date
+tail(FGck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+FGck <- left_join(day, FGck) #join day and dataset
+str(FGck)
 
-#calculate daily mean, max, min, and amplitude
-FGck$day <- lubridate::day(FGck$date)
+#Group by day and calculate mean, max, min, amp
 FGck_daily <- FGck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -468,20 +526,24 @@ head(GP1, n = 50) #Need to remove first 1 values (not in the water yet)
 tail(GP1, n = 50) #Need to remove last 8 values (out of water) 
 GP1 <- GP1[c(2:1749,1753:35336),] 
 str(GP1) #Now we have 35335  observations
-head(GP1)
-tail(GP1)
 missing_data <- GP1[!complete.cases(GP1),] #No missing data
 missing_data #No missing data
 
-#Convert to time series
-GP1ts <- ts(GP1$Temp, start = c(9, 47), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 11:45, or the 47th increment
-ts.plot(GP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+GP1$day <- lubridate::floor_date(GP1$date, unit="day") #Bin by day
+head(GP1, n=70) #check the dataset start date
+tail(GP1) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+GP1 <- left_join(day, GP1) #join day and dataset
+str(GP1)
 
-#calculate daily mean, max, min, and amplitude
-GP1$day <- lubridate::day(GP1$date)
+#Group by day and calculate mean, max, min, amp
 GP1_daily <- GP1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -493,20 +555,24 @@ head(GP2, n = 50) #Need to remove first 2 values (not in the water yet)
 tail(GP2, n = 50) #looks ok 
 GP2 <- GP2[c(3:1749,1752:35343),] 
 str(GP2) #Now we have 35341  observations
-head(GP2)
-tail(GP2)
 missing_data <- GP2[!complete.cases(GP2),]
 missing_data #No missing data
 
-#Convert to time series
-GP2ts <- ts(GP2$Temp, start = c(9, 49), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 12:15, or the 49th increment
-ts.plot(GP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+GP2$day <- lubridate::floor_date(GP2$date, unit="day") #Bin by day
+head(GP2, n=70) #check the dataset start date
+tail(GP2) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+GP2 <- left_join(day, GP2) #join day and dataset
+str(GP2)
 
-#calculate daily mean, max, min, and amplitude
-GP2$day <- lubridate::day(GP2$date)
+#Group by day and calculate mean, max, min, amp
 GP2_daily <- GP2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -517,21 +583,25 @@ plot(GP3$date, GP3$Temp)
 head(GP3, n = 50) #Need to remove first 2 values (not in the water yet)
 tail(GP3, n = 50) #looks ok 
 GP3 <- GP3[c(3:1748,1751:35343),] 
-str(GP3) #Now we have 1746 observations
-head(GP3)
-tail(GP3)
+str(GP3) #Now we have 35339  observations
 missing_data <- GP3[!complete.cases(GP3),]
 missing_data #No missing data
 
-#Convert to time series
-GP3ts <- ts(GP3$Temp, start = c(9, 49), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 12:15, or the 49th increment
-ts.plot(GP3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+GP3$day <- lubridate::floor_date(GP3$date, unit="day") #Bin by day
+head(GP3, n=70) #check the dataset start date
+tail(GP3) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+GP3 <- left_join(day, GP3) #join day and dataset
+str(GP3)
 
-#calculate daily mean, max, min, and amplitude
-GP3$day <- lubridate::day(GP3$date)
+#Group by day and calculate mean, max, min, amp
 GP3_daily <- GP3 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 ```{r, include = F}
@@ -545,15 +615,21 @@ str(GPck) #Now we have 34663  observations
 missing_data <- GPck[!complete.cases(GPck),]#No missing data
 missing_data
 
-#Convert to time series
-GPckts <- ts(GPck$Temp, start = c(16, 54), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 16 at 13:30, or the 54th increment
-ts.plot(GPckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+GPck$day <- lubridate::floor_date(GPck$date, unit="day") #Bin by day
+head(GPck, n=70) #check the dataset start date
+tail(GPck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+GPck <- left_join(day, GPck) #join day and dataset
+str(GPck)
 
-#calculate daily mean, max, min, and amplitude
-GPck$day <- lubridate::day(GPck$date)
+#Group by day and calculate mean, max, min, amp
 GPck_daily <- GPck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 
@@ -569,15 +645,21 @@ str(ULout) #Now we have 1922 observations
 missing_data <- ULout[!complete.cases(ULout),]
 missing_data #No missing data
 
-#Convert to time series
-ULoutts <- ts(ULout$Temp, start = c(7, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 7 at 16:00, or the 56th increment
-ts.plot(ULoutts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+ULout$day <- lubridate::floor_date(ULout$date, unit="day") #Bin by day
+head(ULout, n=70) #check the dataset start date
+tail(ULout) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+ULout <- left_join(day, ULout) #join day and dataset
+str(ULout)
 
-#calculate daily mean, max, min, and amplitude
-ULout$day <- lubridate::day(ULout$date)
+#Group by day and calculate mean, max, min, amp
 ULout_daily <- ULout %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
 
 ```{r, include = F}
@@ -591,13 +673,203 @@ str(UL1) #Now we have 35526  observations
 missing_data <- UL1[!complete.cases(UL1),] #No missing data
 missing_data
 
-#Convert to time series
-UL1ts <- ts(UL1$Temp, start = c(7, 46), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 7 at 11:30, or the 46th increment
-ts.plot(UL1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+#Position dataset into a full year data frame by daily steps
+UL1$day <- lubridate::floor_date(UL1$date, unit="day") #Bin by day
+head(UL1, n=70) #check the dataset start date
+tail(UL1) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+UL1 <- left_join(day, UL1) #join day and dataset
+str(UL1)
 
-#calculate daily mean, max, min, and amplitude
-UL1$day <- lubridate::day(UL1$date)
+#Group by day and calculate mean, max, min, amp
 UL1_daily <- UL1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
 ```
+
+time / 0.25
+```{r, include = F}
+UL3 <- read.csv("UpperLawrence3_SN_20878663.csv")
+UL3$date <- lubridate::mdy_hm(UL3$Date_Time)
+plot(UL3$date, UL3$Temp)
+head(UL3, n = 50) #Need to remove first 19 values (not in the water yet)
+tail(UL3, n = 50) #looks ok 
+UL3 <- UL3[c(20:1943,1947:35513),] 
+str(UL3) #Now we have 35491 observations
+missing_data <- UL3[!complete.cases(UL3),] #No missing data
+missing_data
+
+#Position dataset into a full year data frame by daily steps
+UL3$day <- lubridate::floor_date(UL3$date, unit="day") #Bin by day
+head(UL3, n=70) #check the dataset start date
+tail(UL3) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+UL3 <- left_join(day, UL3) #join day and dataset
+str(UL3)
+
+#Group by day and calculate mean, max, min, amp
+UL3_daily <- UL3 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+```{r, include = F}
+ULck <- read.csv("LowerLawrenceCk_SN_20870140.csv") #Lower and Upper Lawrence have the same sensor in horse creek. In 2020 i labeled that ULck, but the file name for 2021 is Lower Lawrence creek (same sensor)
+ULck$date <- lubridate::mdy_hm(ULck$Date_Time)
+plot(ULck$date, ULck$Temp)
+head(ULck, n = 50) #Need to remove first 28 values (not in the water yet)
+tail(ULck, n = 50) #looks ok 
+ULck <- ULck[c(29:1945,1948:35526),] 
+str(ULck) #Now we have 35496  observations
+missing_data <- ULck[!complete.cases(ULck),]
+missing_data #No missing data
+
+#Position dataset into a full year data frame by daily steps
+ULck$day <- lubridate::floor_date(ULck$date, unit="day") #Bin by day
+head(ULck, n=70) #check the dataset start date
+tail(ULck) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+ULck <- left_join(day, ULck) #join day and dataset
+str(ULck)
+
+#Group by day and calculate mean, max, min, amp
+ULck_daily <- ULck %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+
+#####Lower Lawrence Pond
+```{r, include = F}
+LL1 <- read.csv("LowerLawrence_SN_20870131.csv")
+LL1$date <- lubridate::mdy_hm(LL1$Date_Time)
+plot(LL1$date, LL1$Temp)
+head(LL1, n = 50) #Need to remove first 9 values (not in the water yet)
+tail(LL1, n = 50) #looks ok
+LL1 <- LL1[c(10:1737,1740:35317),] 
+str(LL1) #Now we have 1728 observations
+missing_data <- LL1[!complete.cases(LL1),]
+missing_data #No missing data
+
+#Position dataset into a full year data frame by daily steps
+LL1$day <- lubridate::floor_date(LL1$date, unit="day") #Bin by day
+head(LL1, n=70) #check the dataset start date
+tail(LL1) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+LL1 <- left_join(day, LL1) #join day and dataset
+str(LL1)
+
+#Group by day and calculate mean, max, min, amp
+LL1_daily <- LL1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+
+```{r, include = F}
+LL2 <- read.csv("LowerLawrence_SN_20878651.csv")
+LL2$date <- lubridate::mdy_hm(LL2$Date_Time)
+plot(LL2$date, LL2$Temp)
+head(LL2, n = 50) #Need to remove first 7 values (not in the water yet)
+tail(LL2, n = 50) #looks ok
+LL2 <- LL2[c(8:1737,1740:35277),] 
+str(LL2) 
+missing_data <- LL2[!complete.cases(LL2),]
+missing_data #No missing data
+
+#Position dataset into a full year data frame by daily steps
+LL2$day <- lubridate::floor_date(LL2$date, unit="day") #Bin by day
+head(LL2, n=70) #check the dataset start date
+tail(LL2) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+LL2 <- left_join(day, LL2) #join day and dataset
+str(LL2)
+
+#Group by day and calculate mean, max, min, amp
+LL2_daily <- LL2 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+```{r, include = F}
+LL3 <- read.csv("LowerLawrence_SN_20878670.csv")
+LL3$date <- lubridate::mdy_hm(LL3$Date_Time)
+plot(LL3$date, LL3$Temp)
+head(LL3, n = 50) #Need to remove first 6 values (not in the water yet)
+tail(LL3, n = 50) #looks ok 
+LL3 <- LL3[c(7:1737,1740:35316),] 
+str(LL3) 
+missing_data <- LL3[!complete.cases(LL3),]
+missing_data #No missing data
+
+#Position dataset into a full year data frame by daily steps
+LL3$day <- lubridate::floor_date(LL3$date, unit="day") #Bin by day
+head(LL3, n=70) #check the dataset start date
+tail(LL3) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+LL3 <- left_join(day, LL3) #join day and dataset
+str(LL3)
+
+#Group by day and calculate mean, max, min, amp
+LL3_daily <- LL3 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+
+```
+
+##Data Matrix Mean Temp
+Recall: rows are states, columns are time steps. 
+```{r, include = F}
+#Daily temperature averages (mean)
+matrix7 <- matrix(nrow=29,ncol=22)
+matrix7[1,] <- AP1_daily$mean_temp
+matrix7[2,c(4:22)] <- AP2_daily$mean_temp
+matrix7[3,c(4:22)] <- AP3_daily$mean_temp
+matrix7[4,c(5:22)] <- APck_daily$mean_temp
+matrix7[5,c(5:22)] <- SP1_daily$mean_temp
+matrix7[6,c(5:22)] <- SP2_daily$mean_temp
+matrix7[8,c(7:11)] <- SPck_daily$mean_temp
+matrix7[9,c(7:22)] <- Durazo_daily$mean_temp
+matrix7[10,c(7:22)] <- LS_daily$mean_temp
+matrix7[11,c(7:22)] <- LSck_daily$mean_temp
+matrix7[12,c(7:22)] <- May_daily$mean_temp
+matrix7[13,c(7:22)] <- MayCk_daily$mean_temp
+matrix7[15,c(4:21)] <- FG2_daily$mean_temp
+matrix7[16,c(4:21)] <- FG3_daily$mean_temp
+matrix7[17,c(4:21)] <- FGck_daily$mean_temp
+matrix7[18,c(3:21)] <- GP1_daily$mean_temp
+matrix7[19,c(3:21)] <- GP2_daily$mean_temp
+matrix7[20,c(3:21)] <- GP3_daily$mean_temp
+matrix7[21,c(10:21)] <- GPck_daily$mean_temp
+matrix7[22,c(1:21)] <- ULout_daily$mean_temp
+matrix7[23,c(1:21)] <- UL1_daily$mean_temp
+matrix7[25,c(1:21)] <- UL3_daily$mean_temp
+matrix7[26,c(1:21)] <- ULck_daily$mean_temp
+matrix7[27,c(3:21)] <- LL1_daily$mean_temp
+matrix7[28,c(3:21)] <- LL2_daily$mean_temp
+matrix7[29,c(3:21)] <- LL3_daily$mean_temp
+
+#log transform and de-mean the data
+dat_mean <- matrix7
+dat_mean <- log(dat_mean)
+transformed_dat <- zscore(dat_mean)
+```
+
