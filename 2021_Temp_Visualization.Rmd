@@ -253,3 +253,351 @@ SPck_daily <- SPck %>%
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
 ```
+
+#####Durazo Pond
+```{r, include = FALSE}
+Durazo <- read.csv("Durazo_SN_20878643.csv")
+Durazo$date <- lubridate::mdy_hm(Durazo$Date_Time)
+plot(Durazo$date, Durazo$Temp)
+head(Durazo, n = 100) #Need to remove first 9 values 
+tail(Durazo) #NAs removed in excel
+Durazo <- Durazo[c(10:35019),] 
+str(Durazo) #Now we have 35010  observations
+head(Durazo)
+tail(Durazo)
+missing_data <- Durazo[!complete.cases(Durazo),] 
+missing_data #No missing data
+
+#Convert to time series
+Durazots <- ts(Durazo$Temp, start = c(13, 69), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 17:15, or the 69th increment
+ts.plot(Durazots,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+Durazo$day <- lubridate::day(Durazo$date)
+Durazo_daily <- Durazo %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+
+#####Lower Seiad Pond
+```{r, include = FALSE}
+LS <- read.csv("LowerSeiad_SN_20878706.csv")
+LS$date <- lubridate::mdy_hm(LS$Date_Time)
+plot(LS$date, LS$Temp)
+head(LS, n = 100) #Need to remove first 3 values 
+tail(LS) #Last several NAs removed in excel 
+LS <- LS[c(4:35021),] 
+str(LS) #Now we have 35018 observations
+head(LS)
+tail(LS)
+missing_data <- LS[!complete.cases(LS),] 
+missing_data #No missing data
+
+#Convert to time series
+LSts <- ts(LS$Temp, start = c(13, 52), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 13:00, or the 52th increment
+ts.plot(LSts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+LS$day <- lubridate::day(LS$date)
+LS_daily <- LS %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+```{r, include = FALSE}
+LSck <- read.csv("LowerSeiadCk_SN_20878668.csv")
+LSck$date <- lubridate::mdy_hm(LSck$Date_Time)
+plot(LSck$date, LSck$Temp)
+head(LSck, n = 100) #Need to remove first 4 values 
+tail(LSck) #Need to remove last value
+LSck <- LSck[c(5:35020),] 
+str(LSck) #Now we have 35016  observations
+head(LSck)
+tail(LSck)
+missing_data <- LSck[!complete.cases(LSck),] #No missing data
+missing_data #No missing data
+
+#Convert to time series
+LSckts <- ts(LSck$Temp, start = c(13, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 14:00, or the 56th increment
+ts.plot(LSckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020")
+
+#calculate daily mean, max, min, and amplitude
+LSck$day <- lubridate::day(LSck$date)
+LSck_daily <- LSck %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+#####May Pond
+```{r, include = FALSE}
+May <- read.csv("May_SN_20870134.csv")
+May$date <- lubridate::mdy_hm(May$Date_Time)
+plot(May$date, May$Temp)
+head(May, n = 100) #Need to remove first 3 values 
+tail(May, n = 400) #NAs removed in .csv file -- Note, sensor died in June and removed last several days of data 
+May <- May[c(4:1438,1443:32628),] 
+str(May) #Now we have 32621 observations
+head(May)
+tail(May)
+missing_data <- May[!complete.cases(May),] #No missing data
+missing_data #No missing data
+
+#Convert to time series
+Mayts <- ts(May$Temp, start = c(13, 46), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 11:30, or the 46th increment
+ts.plot(Mayts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+May$day <- lubridate::day(May$date)
+May_daily <- May %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+```{r, include = FALSE}
+MayCk <- read.csv("MayCk_SN_20878646.csv")
+MayCk$date <- lubridate::mdy_hm(MayCk$Date_Time)
+plot(MayCk$date, MayCk$Temp)
+head(MayCk, n = 100) #Need to remove first 3 values 
+tail(MayCk) #All good
+MayCk <- MayCk[c(4:35028),] 
+str(MayCk) #Now we have 35025  observations
+head(MayCk)
+tail(MayCk)
+missing_data <- MayCk[!complete.cases(MayCk),]
+missing_data #No missing data
+
+#Convert to time series
+MayCkts <- ts(MayCk$Temp, start = c(13, 47), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 13 at 11:45, or the 47th increment
+ts.plot(MayCkts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+MayCk$day <- lubridate::day(MayCk$date)
+MayCk_daily <- MayCk %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+
+```
+
+####Fish Gulch
+```{r, include = F}
+FG2 <- read.csv("FishGulch_SN_20870133.csv")
+FG2$date <- lubridate::mdy_hm(FG2$Date_Time) 
+plot(FG2$date, FG2$Temp)
+head(FG2, n = 50) #Need to remove first 10 values (not in the water yet)
+tail(FG2, n = 50) #Look sok 
+FG2 <- FG2[c(11:1653,1657:35244),] 
+str(FG2) #Now we have 35231 observations
+head(FG2)
+tail(FG2)
+missing_data <- FG2[!complete.cases(FG2),]
+missing_data #No missing data
+
+#Convert to time series
+FG2ts <- ts(FG2$Temp, start = c(10, 52), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 13:00, or the 52nd increment
+ts.plot(FG2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+FG2$day <- lubridate::day(FG2$date)
+FG2_daily <- FG2 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r,include = F}
+FG3 <- read.csv("FishGulch_SN_20878708.csv")
+FG3$date <- lubridate::mdy_hm(FG3$Date_Time) 
+plot(FG3$date, FG3$Temp)
+head(FG3, n = 50) #Need to remove first 8 values (not in the water yet)
+tail(FG3, n = 50) #Looks ok. 
+FG3 <- FG3[c(9:1652,1666:35242),] 
+str(FG3) #Now we have 35234  observations
+head(FG3)
+tail(FG3)
+missing_data <- FG3[!complete.cases(FG3),]
+missing_data #No missing data
+
+#Convert to time series
+FG3ts <- ts(FG3$Temp, start = c(10, 50), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 12:30, or the 50th increment
+ts.plot(FG3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+FG3$day <- lubridate::day(FG3$date)
+FG3_daily <- FG3 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = F}
+FGck <- read.csv("FishGulchCk_SN_20878671.csv")
+FGck$date <- lubridate::mdy_hm(FGck$Date_Time) 
+plot(FGck$date, FGck$Temp)
+head(FGck, n = 50) #looks ok
+tail(FGck, n = 50) #looks ok
+FGck <- FGck[c(1:1640,1643:35233),] 
+str(FGck) #Now we have 35231 observations
+head(FGck)
+tail(FGck)
+missing_data <- FGck[!complete.cases(FGck),] 
+missing_data #No missing data
+
+#Convert to time series
+FGckts <- ts(FGck$Temp, start = c(10, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 10 at 14:00, or the 56th increment
+ts.plot(FGckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+FGck$day <- lubridate::day(FGck$date)
+FGck_daily <- FGck %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+#####Goodman Pond
+```{r, include = F}
+GP1 <- read.csv("Goodman_SN_20878644.csv")
+GP1$date <- lubridate::mdy_hm(GP1$Date_Time)
+plot(GP1$date, GP1$Temp)
+head(GP1, n = 50) #Need to remove first 1 values (not in the water yet)
+tail(GP1, n = 50) #Need to remove last 8 values (out of water) 
+GP1 <- GP1[c(2:1749,1753:35336),] 
+str(GP1) #Now we have 35335  observations
+head(GP1)
+tail(GP1)
+missing_data <- GP1[!complete.cases(GP1),] #No missing data
+missing_data #No missing data
+
+#Convert to time series
+GP1ts <- ts(GP1$Temp, start = c(9, 47), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 11:45, or the 47th increment
+ts.plot(GP1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+GP1$day <- lubridate::day(GP1$date)
+GP1_daily <- GP1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = F}
+GP2 <- read.csv("Goodman_SN_20878647.csv")
+GP2$date <- lubridate::mdy_hm(GP2$Date_Time)
+plot(GP2$date, GP2$Temp)
+head(GP2, n = 50) #Need to remove first 2 values (not in the water yet)
+tail(GP2, n = 50) #looks ok 
+GP2 <- GP2[c(3:1749,1752:35343),] 
+str(GP2) #Now we have 35341  observations
+head(GP2)
+tail(GP2)
+missing_data <- GP2[!complete.cases(GP2),]
+missing_data #No missing data
+
+#Convert to time series
+GP2ts <- ts(GP2$Temp, start = c(9, 49), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 12:15, or the 49th increment
+ts.plot(GP2ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+GP2$day <- lubridate::day(GP2$date)
+GP2_daily <- GP2 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+```{r, include = F}
+GP3 <- read.csv("Goodman_SN_20878659.csv")
+GP3$date <- lubridate::mdy_hm(GP3$Date_Time)
+plot(GP3$date, GP3$Temp)
+head(GP3, n = 50) #Need to remove first 2 values (not in the water yet)
+tail(GP3, n = 50) #looks ok 
+GP3 <- GP3[c(3:1748,1751:35343),] 
+str(GP3) #Now we have 1746 observations
+head(GP3)
+tail(GP3)
+missing_data <- GP3[!complete.cases(GP3),]
+missing_data #No missing data
+
+#Convert to time series
+GP3ts <- ts(GP3$Temp, start = c(9, 49), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 9 at 12:15, or the 49th increment
+ts.plot(GP3ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+GP3$day <- lubridate::day(GP3$date)
+GP3_daily <- GP3 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+```{r, include = F}
+GPck <- read.csv("GoodmanCk_SN_20878654.csv")
+GPck$date <- lubridate::mdy_hm(GPck$Date_Time)
+plot(GPck$date, GPck$Temp)
+head(GPck, n = 50) #Need to remove first 1 values (not in the water yet)
+tail(GPck, n = 50) #Need to remove last 1 value 
+GPck <- GPck[c(2:1071,1074:34666),] 
+str(GPck) #Now we have 34663  observations
+missing_data <- GPck[!complete.cases(GPck),]#No missing data
+missing_data
+
+#Convert to time series
+GPckts <- ts(GPck$Temp, start = c(16, 54), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 16 at 13:30, or the 54th increment
+ts.plot(GPckts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+GPck$day <- lubridate::day(GPck$date)
+GPck_daily <- GPck %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+
+#####Upper Lawrence Pond
+```{r, include = F}
+ULout <- read.csv("UpperLawrence3_SN_20878673.csv")
+ULout$date <- lubridate::mdy_hm(ULout$Date_Time)
+plot(ULout$date, ULout$Temp)
+head(ULout, n = 50) #Need to remove first 22 values (not in the water yet)
+tail(ULout, n = 50) #looks ok 
+ULout <- ULout[c(23:1943,1946:35520),] 
+str(ULout) #Now we have 1922 observations
+missing_data <- ULout[!complete.cases(ULout),]
+missing_data #No missing data
+
+#Convert to time series
+ULoutts <- ts(ULout$Temp, start = c(7, 56), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 7 at 16:00, or the 56th increment
+ts.plot(ULoutts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+ULout$day <- lubridate::day(ULout$date)
+ULout_daily <- ULout %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
+
+```{r, include = F}
+UL1 <- read.csv("UpperLawrence1_SN_20878682.csv")
+UL1$date <- lubridate::mdy_hm(UL1$Date_Time)
+plot(UL1$date, UL1$Temp)
+head(UL1, n = 50) #Need to remove first 5 values (not in the water yet)
+tail(UL1, n = 1150) #Need to remove last several days; sensor removed on 12 July 2021
+UL1 <- UL1[c(6:35531),] 
+str(UL1) #Now we have 35526  observations
+missing_data <- UL1[!complete.cases(UL1),] #No missing data
+missing_data
+
+#Convert to time series
+UL1ts <- ts(UL1$Temp, start = c(7, 46), frequency = 96) #The sensor records 96 readings per day (15 minute increments). This time series starts on July 7 at 11:30, or the 46th increment
+ts.plot(UL1ts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#calculate daily mean, max, min, and amplitude
+UL1$day <- lubridate::day(UL1$date)
+UL1_daily <- UL1 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+```
