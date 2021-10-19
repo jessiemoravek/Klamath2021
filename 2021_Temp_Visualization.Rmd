@@ -839,33 +839,33 @@ LL3_daily <- LL3 %>%
 Recall: rows are states, columns are time steps. 
 ```{r, include = F}
 #Daily temperature averages (mean)
-matrix7 <- matrix(nrow=29,ncol=22)
+matrix7 <- matrix(nrow=26,ncol=378)
 matrix7[1,] <- AP1_daily$mean_temp
-matrix7[2,c(4:22)] <- AP2_daily$mean_temp
-matrix7[3,c(4:22)] <- AP3_daily$mean_temp
-matrix7[4,c(5:22)] <- APck_daily$mean_temp
-matrix7[5,c(5:22)] <- SP1_daily$mean_temp
-matrix7[6,c(5:22)] <- SP2_daily$mean_temp
-matrix7[8,c(7:11)] <- SPck_daily$mean_temp
-matrix7[9,c(7:22)] <- Durazo_daily$mean_temp
-matrix7[10,c(7:22)] <- LS_daily$mean_temp
-matrix7[11,c(7:22)] <- LSck_daily$mean_temp
-matrix7[12,c(7:22)] <- May_daily$mean_temp
-matrix7[13,c(7:22)] <- MayCk_daily$mean_temp
-matrix7[15,c(4:21)] <- FG2_daily$mean_temp
-matrix7[16,c(4:21)] <- FG3_daily$mean_temp
-matrix7[17,c(4:21)] <- FGck_daily$mean_temp
-matrix7[18,c(3:21)] <- GP1_daily$mean_temp
-matrix7[19,c(3:21)] <- GP2_daily$mean_temp
-matrix7[20,c(3:21)] <- GP3_daily$mean_temp
-matrix7[21,c(10:21)] <- GPck_daily$mean_temp
-matrix7[22,c(1:21)] <- ULout_daily$mean_temp
-matrix7[23,c(1:21)] <- UL1_daily$mean_temp
-matrix7[25,c(1:21)] <- UL3_daily$mean_temp
-matrix7[26,c(1:21)] <- ULck_daily$mean_temp
-matrix7[27,c(3:21)] <- LL1_daily$mean_temp
-matrix7[28,c(3:21)] <- LL2_daily$mean_temp
-matrix7[29,c(3:21)] <- LL3_daily$mean_temp
+matrix7[2,] <- AP2_daily$mean_temp
+matrix7[3,] <- AP3_daily$mean_temp
+matrix7[4,] <- APck_daily$mean_temp
+matrix7[5,] <- SP1_daily$mean_temp
+matrix7[6,] <- SP2_daily$mean_temp
+matrix7[7,] <- SPck_daily$mean_temp
+matrix7[8,] <- Durazo_daily$mean_temp
+matrix7[9,] <- LS_daily$mean_temp
+matrix7[10,] <- LSck_daily$mean_temp
+matrix7[11,] <- May_daily$mean_temp
+matrix7[12,] <- MayCk_daily$mean_temp
+matrix7[13,] <- FG2_daily$mean_temp
+matrix7[14,] <- FG3_daily$mean_temp
+matrix7[15,] <- FGck_daily$mean_temp
+matrix7[16,] <- GP1_daily$mean_temp
+matrix7[17,] <- GP2_daily$mean_temp
+matrix7[18,] <- GP3_daily$mean_temp
+matrix7[19,] <- GPck_daily$mean_temp
+matrix7[20,] <- ULout_daily$mean_temp
+matrix7[21,] <- UL1_daily$mean_temp
+matrix7[22,] <- UL3_daily$mean_temp
+matrix7[23,] <- ULck_daily$mean_temp
+matrix7[24,] <- LL1_daily$mean_temp
+matrix7[25,] <- LL2_daily$mean_temp
+matrix7[26,] <- LL3_daily$mean_temp
 
 #log transform and de-mean the data
 dat_mean <- matrix7
@@ -873,3 +873,98 @@ dat_mean <- log(dat_mean)
 transformed_dat <- zscore(dat_mean)
 ```
 
+##Z-Matrices
+```{r }
+#Hypothesis 1: All ponds and creeks are separate
+matrix2 <- matrix(nrow=26,ncol=11)
+matrix2[c(1:3),1] <- 1 #Alexander
+matrix2[c(1:3),c(2:11)] <- 0
+matrix2[c(5:6),2] <- 1 #Stender
+matrix2[c(5:6),c(1,3:11)] <- 0 
+matrix2[c(4,7,10,12),3] <- 1 #Seiad Creek
+matrix2[c(4,7,10,12),c(1,2,4:11)] <- 0
+matrix2[8,4] <- 1 #Durazo
+matrix2[8,c(1:3,5:11)] <- 0
+matrix2[9,5] <- 1 #Lower Seiad
+matrix2[9,c(1:4,6:11)] <- 0
+matrix2[11,6] <- 1 #May
+matrix2[11,c(1:5,7:11)] <- 0
+matrix2[c(13:14),7] <- 1 #Fish Gulch
+matrix2[c(13:14),c(1:6,8:11)] <- 0
+matrix2[c(16:18),8] <- 1 #Goodman
+matrix2[c(16:18),c(1:7,9:11)] <- 0
+matrix2[c(20:22),9] <- 1 #Upper Lawrence
+matrix2[c(20:22),c(1:8,10:11)] <- 0
+matrix2[c(24:26),10] <- 1 #Lower Lawrence
+matrix2[c(24:26),c(1:9,11)] <- 0
+matrix2[c(15,19,23),11] <- 1 #Horse Creek
+matrix2[c(15,19,23),c(1:10)] <- 0
+
+#Hypothesis 2: ponds versus creeks
+matrix3 <- matrix(nrow=26, ncol=2)
+matrix3[c(1:3,5:6,8:9,11,13:14,16:18,20:22,24:26),1] <- 1 #All ponds
+matrix3[c(1:3,5:6,8:9,11,13:14,16:18,20:22,24:26),2] <- 0
+matrix3[c(4,7,10,12,15,19,23),1] <- 0 #All creeks
+matrix3[c(4,7,10,12,15,19,23),2] <- 1
+
+#Hypothesis 3: tributary versus tributary
+matrix4 <-matrix(nrow=26,ncol=4)
+matrix4[c(1:3,5:6,8:9,11),1] <- 1  #Seiad Creek Ponds
+matrix4[c(1:3,5:6,8:9,11),c(2:4)] <- 0
+matrix4[c(4,7,10,12),2] <- 1 #Seiad Creek
+matrix4[c(4,7,10,12),c(1,3:4)] <- 0
+matrix4[c(13:14,16:18,20:22,24:26),3] <- 1 #Horse Creek Ponds
+matrix4[c(13:14,16:18,20:22,24:26),c(1,2,4)] <- 0
+matrix4[c(15,19,23),4] <- 1 #Horse Creek
+matrix4[c(15,19,23),c(1:3)] <- 0
+
+#Hypothesis 4: All sensors are the same
+matrix5 <-  matrix(nrow=26, ncol=1)
+matrix5[,] <- 1
+
+```
+
+##Covariates
+```{r, include=FALSE}
+airtemp <- read.csv("SlaterButteAirTemp_2020_2021.csv")
+str(airtemp)
+plot(airtemp$TAVG)
+
+#Need to convert F to C, but can only perform this function once per download of the dataset becuase it'll do it again
+#airtemp$TAVG <- fahrenheit.to.celsius(airtemp$TAVG)
+#airtemp$TMAX <- fahrenheit.to.celsius(airtemp$TMAX)
+#airtemp$TMIN <- fahrenheit.to.celsius(airtemp$TMIN)
+
+airtemp$date <- lubridate::mdy(airtemp$DATE)
+missing_data <- airtemp[!complete.cases(airtemp),] #No missing data
+missing_data
+airtemp$day <- lubridate::floor_date(airtemp$date, unit="day")
+str(airtemp)
+#cut to fit our data (1 July 2020 through 13 July 2021)
+airtemp <- airtemp[c(1:377),]
+str(airtemp)
+head(airtemp)
+tail(airtemp)
+#AND maximum temperature occurs about 4 days before maximum water temperature
+#so I need to shift covariate data to the RIGHT by 4 days
+#cut to fit our data (3 July through 24 July)
+plot(LL3_daily$mean_temp)
+plot(airtemp$TAVG)
+ggplot() + 
+  geom_point(data = LL3_daily, aes(x = day, y = mean_temp, color = "blue")) +
+  geom_point(data = airtemp, aes(x = date, y = TAVG, color = "red")) +
+  theme_classic() 
+airtemp <- airtemp[c(32:53),] 
+
+str(airtemp)
+
+#Convert to time series
+airtempts <- ts(airtemp$TAVG, start = c(3, 1), frequency = 1) #The sensor records 1 reading per day. This time series starts on July 3 
+ts.plot(airtempts,main="Temperature",ylab = "Temperature (C)", xlab = "Day of July 2020") 
+
+#Build the little c matrix, call it matrixc
+matrixc <- matrix(nrow=1,ncol=22)
+matrixc <- t(as.matrix(airtemp$TAVG))
+matrixc
+
+```
