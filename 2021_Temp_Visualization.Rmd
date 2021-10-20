@@ -1000,7 +1000,7 @@ saveRDS(mod1.params,"mod1.params.rds")
 mod2 <- mod1 
 mod2$Z <- matrix3
 mod2.fit = MARSS(transformed_dat, model=mod2, control=list(maxit=10000))
-MARSSparamCIs(mod2.fit)
+mod2.params = MARSSparamCIs(mod2.fit)
 saveRDS(mod2.fit,"mod2.fit.rds")
 saveRDS(mod2.params,"mod2.params.rds")
 #AICc is 9799.817                 
@@ -1009,7 +1009,7 @@ saveRDS(mod2.params,"mod2.params.rds")
 mod3 <- mod1
 mod3$Z = matrix4
 mod3.fit = MARSS(transformed_dat, model=mod3, control=list(maxit=10000))
-MARSSparamCIs(mod3.fit)
+mod3.params = MARSSparamCIs(mod3.fit)
 saveRDS(mod3.fit,"mod3.fit.rds")
 saveRDS(mod3.params,"mod3.params.rds")
 #AICc is 3711.734                          
@@ -1018,9 +1018,12 @@ saveRDS(mod3.params,"mod3.params.rds")
 mod4 <- mod1 
 mod4$Z <- matrix5
 mod4.fit = MARSS(transformed_dat, model=mod4, control=list(maxit=10000))
-MARSSparamCIs(mod4.fit)
+mod4.params =MARSSparamCIs(mod4.fit)
 saveRDS(mod4.fit,"mod4.fit.rds")
 saveRDS(mod4.params,"mod4.params.rds")
-#AICc is 10072.8      
+#AICc is 10072.8   
 
+readRDS("mod1.params.rds")
+readRDS("mod2.params.rds")
+plot(mod1.params)
 ```
