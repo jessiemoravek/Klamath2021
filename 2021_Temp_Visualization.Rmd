@@ -171,7 +171,7 @@ str(SP1)
 SP1_daily <- SP1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
-
+summary(SP1_daily$amp_temp,na.rm=T)
 ```
 
 
@@ -267,9 +267,11 @@ plot(SPck$date, SPck$Temp)
 head(SPck, n = 100) #Need to remove first 5 values. Also remove 1140:1141 on 28 July 2020 when sensor was reset 
 tail(SPck, n = 800) #Sensor started to fail on 15 April 2021, removed last day of readings. Note that sensor failed on 16 April 2021
 SPck <- SPck[c(6:1139,1142:26240),] 
-str(SPck) #Now we have 26233 observations
+SPck <- SPck%>%filter(date<'2020-11-15 00:00:00'| date > '2020-12-16 00:00:00')#removed 15 Nov through 16 Dec when sensor was out of water
+str(SPck) #Now we have 24219  observations
 missing_data <- SPck[!complete.cases(SPck),] #No missing data
 missing_data
+
 
 #Position dataset into a full year data frame by daily steps
 SPck$day <- lubridate::floor_date(SPck$date, unit="day") #Bin by day
@@ -286,6 +288,7 @@ SPck_daily <- SPck %>%
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
 
+plot(SPck_daily$day, SPck_daily$amp_temp)
 ```
 
 #####Durazo Pond
@@ -441,7 +444,8 @@ plot(FG2$date, FG2$Temp)
 head(FG2, n = 50) #Need to remove first 10 values (not in the water yet)
 tail(FG2, n = 50) #Look sok 
 FG2 <- FG2[c(11:1653,1657:35244),] 
-str(FG2) #Now we have 35231 observations
+FG2 <- FG2%>%filter(date<'2020-11-20 00:00:00'| date > '2021-06-01 00:00:00') #removed data between 20 nov and 1 June when sensor was out of water
+str(FG2)
 missing_data <- FG2[!complete.cases(FG2),]
 missing_data #No missing data
 
@@ -459,7 +463,8 @@ str(FG2)
 FG2_daily <- FG2 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
-
+plot(FG2_daily$day,FG2_daily$amp_temp)
+FG2_daily%>%filter(amp_temp>6)
 ```
 
 
