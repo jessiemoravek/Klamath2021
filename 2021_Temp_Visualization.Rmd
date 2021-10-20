@@ -119,7 +119,6 @@ APck$date <- lubridate::mdy_hm(APck$Date_Time)
 plot(APck$date, APck$Temp)
 head(APck, n = 100) #Need to remove first 87 values (not in the water yet)
 tail(APck, n = 500) #Last NAs already removed in .csv file. Sensor seems like it might be out of the water somewhere in late Jan 2021
-APck[c(18000:18500),] 
 APck <- APck[c(88:18125),] #Need to cut off everything after 17 January 2021 becuase sensor out of water which we can see from amplitude
 str(APck) #Now we have 18038  observations
 missing_data <- APck[!complete.cases(APck),] 
@@ -272,7 +271,6 @@ str(SPck) #Now we have 24219  observations
 missing_data <- SPck[!complete.cases(SPck),] #No missing data
 missing_data
 
-
 #Position dataset into a full year data frame by daily steps
 SPck$day <- lubridate::floor_date(SPck$date, unit="day") #Bin by day
 head(SPck, n=70) #check the dataset start date
@@ -358,6 +356,7 @@ plot(LSck$date, LSck$Temp)
 head(LSck, n = 100) #Need to remove first 4 values 
 tail(LSck) #Need to remove last value
 LSck <- LSck[c(5:35020),] 
+LSck <- LSck%>%filter(date<'2020-08-21 00:00:00'| date > '2020-09-28 00:00:00') #removed data between 21 Aug and 28 Sept when sensor was out of water
 str(LSck) #Now we have 35016  observations
 missing_data <- LSck[!complete.cases(LSck),] #No missing data
 missing_data #No missing data
@@ -376,6 +375,8 @@ str(LSck)
 LSck_daily <- LSck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+plot(LSck_daily$day,LSck_daily$amp_temp)
+#LSck_daily[LSck_daily$amp_temp>9,] #Figureing out when amp temp is too high (i.e. sensor out of creek)
 
 ```
 
@@ -533,7 +534,8 @@ GP1$date <- lubridate::mdy_hm(GP1$Date_Time)
 plot(GP1$date, GP1$Temp)
 head(GP1, n = 50) #Need to remove first 1 values (not in the water yet)
 tail(GP1, n = 50) #Need to remove last 8 values (out of water) 
-GP1 <- GP1[c(2:1749,1753:35336),] 
+GP1 <- GP1[c(2:1749,1753:35336),]
+GP1 <- GP1%>%filter(date<'2020-07-29 00:00:00'| date > '2020-09-21 00:00:00') #removed data between 29 July and 21 Sept when sensor was out of water
 str(GP1) #Now we have 35335  observations
 missing_data <- GP1[!complete.cases(GP1),] #No missing data
 missing_data #No missing data
@@ -552,6 +554,8 @@ str(GP1)
 GP1_daily <- GP1 %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
+plot(GP1_daily$day,GP1_daily$amp_temp)
+#GP1_daily[GP1_daily$amp_temp>6,] #Figureing out when amp temp is too high (i.e. sensor out of creek)
 
 ```
 
@@ -619,7 +623,8 @@ GPck$date <- lubridate::mdy_hm(GPck$Date_Time)
 plot(GPck$date, GPck$Temp)
 head(GPck, n = 50) #Need to remove first 1 values (not in the water yet)
 tail(GPck, n = 50) #Need to remove last 1 value 
-GPck <- GPck[c(2:1071,1074:34666),] 
+GPck <- GPck[c(2:1071,1074:34666),]
+GPck <- GPck%>%filter(date<'2020-08-26 00:00:00'| date > '2020-11-15 00:00:00') #removed data between 26 Aug and 15 Nov when sensor was out of water
 str(GPck) #Now we have 34663  observations
 missing_data <- GPck[!complete.cases(GPck),]#No missing data
 missing_data
@@ -638,7 +643,8 @@ str(GPck)
 GPck_daily <- GPck %>% 
   group_by(day) %>% 
   summarize(mean_temp=mean(Temp),max_temp=max(Temp), min_temp=min(Temp), amp_temp=(max(Temp)-min(Temp)))
-
+plot(GPck_daily$day,GPck_daily$amp_temp)
+# GPck_daily[GPck_daily$amp_temp>7,] Figureing out when amp temp is too high (i.e. sensor out of creek)
 ```
 
 
@@ -986,27 +992,27 @@ mod1$C = "unequal" #I think I can set C to unequal because it is going off the Z
 mod1$c = matrixc
 mod1.fit = MARSS(transformed_dat, model=mod1, control=list(maxit=10000))
 MARSSparamCIs(mod1.fit)
-#AICc is -435.1345                  
+#AICc is -444.0914                 
 
 #Hypothesis 2, Model 3: ponds vs. creeks 
 mod2 <- mod1 
 mod2$Z <- matrix3
 mod2.fit = MARSS(transformed_dat, model=mod2, control=list(maxit=10000))
 MARSSparamCIs(mod2.fit)
-#AICc is 9942.797              
+#AICc is 9799.817                 
 
 #Hypothesis 3, Model 3: Tributary versus tributary
 mod3 <- mod1
 mod3$Z = matrix4
 mod3.fit = MARSS(transformed_dat, model=mod3, control=list(maxit=10000))
 MARSSparamCIs(mod3.fit)
-#AICc is 3533.516                       
+#AICc is 3711.734                          
 
 #Hypothesis 4, Model 4: All same
 mod4 <- mod1 
 mod4$Z <- matrix5
 mod4.fit = MARSS(transformed_dat, model=mod4, control=list(maxit=10000))
 MARSSparamCIs(mod4.fit)
-#AICc is 10262.35   
+#AICc is 10072.8      
 
 ```
