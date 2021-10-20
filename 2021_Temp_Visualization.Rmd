@@ -132,7 +132,7 @@ day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that g
 day <- as.data.frame(day) #convert "day" to data frame
 str(day) #check that it's a data frame
 APck <- left_join(day, APck) #join day and dataset
-head(APck_daily,300)
+
 #2021-02-23	
 
 #Group by day and calculate mean, max, min, amp
@@ -991,7 +991,9 @@ mod1$U = "zero" #no trend because we z scored
 mod1$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
 mod1$c = matrixc
 mod1.fit = MARSS(transformed_dat, model=mod1, control=list(maxit=10000))
-MARSSparamCIs(mod1.fit)
+mod1.params = MARSSparamCIs(mod1.fit)
+saveRDS(mod1.fit,"mod1.fit.rds")
+saveRDS(mod1.params,"mod1.params.rds")
 #AICc is -444.0914                 
 
 #Hypothesis 2, Model 3: ponds vs. creeks 
@@ -999,6 +1001,8 @@ mod2 <- mod1
 mod2$Z <- matrix3
 mod2.fit = MARSS(transformed_dat, model=mod2, control=list(maxit=10000))
 MARSSparamCIs(mod2.fit)
+saveRDS(mod2.fit,"mod2.fit.rds")
+saveRDS(mod2.params,"mod2.params.rds")
 #AICc is 9799.817                 
 
 #Hypothesis 3, Model 3: Tributary versus tributary
@@ -1006,6 +1010,8 @@ mod3 <- mod1
 mod3$Z = matrix4
 mod3.fit = MARSS(transformed_dat, model=mod3, control=list(maxit=10000))
 MARSSparamCIs(mod3.fit)
+saveRDS(mod3.fit,"mod3.fit.rds")
+saveRDS(mod3.params,"mod3.params.rds")
 #AICc is 3711.734                          
 
 #Hypothesis 4, Model 4: All same
@@ -1013,6 +1019,8 @@ mod4 <- mod1
 mod4$Z <- matrix5
 mod4.fit = MARSS(transformed_dat, model=mod4, control=list(maxit=10000))
 MARSSparamCIs(mod4.fit)
+saveRDS(mod4.fit,"mod4.fit.rds")
+saveRDS(mod4.params,"mod4.params.rds")
 #AICc is 10072.8      
 
 ```
