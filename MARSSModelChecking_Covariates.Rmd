@@ -28,6 +28,69 @@ matrixc <- readRDS("matrixc.rds")
 airtemp <- readRDS("airtemp.rds")
 ```
 
+###2020 MARSS model outputs: July 7 - July 28 2020 (airtemp as a covariate, but not z scored. No seasonal correction)
+```{r}
+mod1.fit.2020 <- readRDS("2020_mod1.fit.rds")
+mod1.params.2020 <- readRDS("2020_mod1.params.rds")
+mod2.fit.2020 <- readRDS("2020_mod2.fit.rds")
+mod2.params.2020 <- readRDS("2020_mod2.params.rds")
+mod3.fit.2020 <- readRDS("2020_mod3.fit.rds")
+mod3.params.2020 <- readRDS("2020_mod3.params.rds")
+mod4.fit.2020 <- readRDS("2020_mod4.fit.rds")
+mod4.params.2020 <- readRDS("2020_mod4.params.rds")
+
+#Model 1, hypothesis 1 (all separate)
+mod1.params.2020 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod1.fit.2020, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 2, hypothesis 2 (creeks vs ponds)
+mod2.params.2020 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod2.fit.2020, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 3, hypothesis 3 (trib vs. trib)
+mod3.params.2020
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod3.fit.2020, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 4, hypothesis 4 (all same)
+mod4.params.2020
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod4.fit.2020, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#...these models are actually okay, but short
+```
+###Comparing 2020 AICc values
+```{r}
+data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
+           AICc=round(c(mod1.fit.2020$AICc,
+                        mod2.fit.2020$AICc,
+                        mod3.fit.2020$AICc,
+                        mod4.fit.2020$AICc),1))
+```
+
+
 
 ###Original MARSS model outputs (using airtemp as a covariate, airtemp not transformed, no Fourier Series correction for seasonality)
 ```{r}
