@@ -966,16 +966,14 @@ tail(airtemp,30)
 #cut to fit our data (4 July 2020 through 17 July 2021)
 airtemp <- airtemp[c(4:381),]
 str(airtemp)
-#Convert to time series
-airtempts <- ts(airtemp$TAVG, start = c(4, 1), frequency = 1) #The sensor records 1 reading per day. This time series starts on July 4 
-ts.plot(airtempts,main="Temperature",ylab = "Temperature (C)", xlab = "Day") 
 
 #Build the little c matrix, call it matrixc
 matrixc <- matrix(nrow=1,ncol=378)
 matrixc <- t(as.matrix(airtemp$TAVG))
-matrixc
 
 ```
+
+
 
 
 ##MARSS models with Covariates and Mean temps
@@ -1022,8 +1020,110 @@ mod4.params =MARSSparamCIs(mod4.fit)
 saveRDS(mod4.fit,"mod4.fit.rds")
 saveRDS(mod4.params,"mod4.params.rds")
 #AICc is 10072.8   
-
+```
+###Model checking
+```{r}
+mod1.fit <- readRDS("mod1.fit.rds")
 readRDS("mod1.params.rds")
+mod2.fit <- readRDS("mod2.fit.rds")
 readRDS("mod2.params.rds")
-plot(mod1.params)
+readRDS("mod3.fit.rds")
+readRDS("mod3.params.rds")
+readRDS("mod4.fit.rds")
+readRDS("mod4.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod2.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#...these models are not good
+```
+###correct for seasonality
+
+```{r}
+#Correct for seasonality using Fourier Series
+TT = ncol(transformed_dat) # number of time periods/samples
+period = 365 # number of "seasons" (e.g., 12 months per year)
+per.1st = 1 # first "season" (e.g., Jan = 1, July = 7)
+c = diag(period) # create factors for seasons
+for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
+dim(c)
+
+#Create Fourier Series
+cos.t = cos(2 * pi * seq(TT) / period)
+sin.t = sin(2 * pi * seq(TT) / period)
+c.Four = rbind(cos.t,sin.t)
+cor(c.Four[1,],c.Four[2,]) # not correlated!
+matplot(t(c.Four), type="l")
+
+#Now fit model with seasonality AND an additional covariate (airtemp from above)
+airtemp_z <- zscore(airtemp$TAVG)
+newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=airtemp_z)
+head(newcovarsFour_airtemp)
+matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
+newcovarsFour_airtemp[,1:6]
+```
+
+###Rerun MARSS
+```{r }
+#Hypothesis 1, Model 5: All ponds and creeks are separate
+mod5 = list()
+mod5$A = "zero" #no trend because we z scored
+mod5$Z = matrix2
+mod5$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
+mod5$Q = "unconstrained" #leave Q unconstrained because we expect some covariance between sensors (also try Equalvarcov)
+mod5$B = "identity" #assuming no species interactions
+mod5$U = "zero" #no trend because we z scored 
+mod5$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod5$c = newcovarsFour_airtemp
+mod5.fit = MARSS(transformed_dat, model=mod5, control=list(maxit=10000))
+mod5.params = MARSSparamCIs(mod5.fit)
+saveRDS(mod5.fit,"mod5.fit.rds")
+saveRDS(mod5.params,"mod5.params.rds")
+#AICc is -548.1774
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod5.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Hypothesis 2, Model 3: ponds vs. creeks 
+mod6 <- mod5 
+mod6$Z <- matrix3
+mod6.fit = MARSS(transformed_dat, model=mod6, control=list(maxit=10000))
+mod6.params = MARSSparamCIs(mod6.fit)
+saveRDS(mod6.fit,"mod6.fit.rds")
+saveRDS(mod6.params,"mod6.params.rds")
+#AICc is 9799.817                 
+
+#Hypothesis 3, Model 3: Tributary versus tributary
+mod7 <- mod5
+mod7$Z = matrix4
+mod7.fit = MARSS(transformed_dat, model=mod7, control=list(maxit=10000))
+mod7.params = MARSSparamCIs(mod7.fit)
+saveRDS(mod7.fit,"mod7.fit.rds")
+saveRDS(mod7.params,"mod7.params.rds")
+#AICc is 3711.734                          
+
+#Hypothesis 4, Model 4: All same
+mod8 <- mod5 
+mod8$Z <- matrix5
+mod8.fit = MARSS(transformed_dat, model=mod8, control=list(maxit=10000))
+mod8.params =MARSSparamCIs(mod8.fit)
+saveRDS(mod8.fit,"mod8.fit.rds")
+saveRDS(mod8.params,"mod8.params.rds")
+#AICc is 10072.8  
+
+data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
+           AICc=round(c(mod5.fit$AICc,
+                        mod6.fit$AICc,
+                        mod7.fit$AICc,
+                        mod8.fit$AICc),1))
 ```
