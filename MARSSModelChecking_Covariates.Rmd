@@ -1,0 +1,184 @@
+---
+title: "MARSS model checking"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+library(astsa)
+library(forecast)
+library(dplyr)
+library(pander)
+library(MARSS)
+library(MASS)
+library(gridExtra)
+library(weathermetrics)
+```
+
+```{r, include = F}
+transformed_dat <- readRDS("transformed_dat.rds")
+matrix2 <- readRDS("matrix2.rds")
+matrix3 <- readRDS("matrix3.rds")
+matrix4 <- readRDS("matrix4.rds")
+matrix5 <- readRDS("matrix5.rds")
+matrixc <- readRDS("matrixc.rds")
+airtemp <- readRDS("airtemp.rds")
+```
+
+
+###Original MARSS model outputs (using airtemp as a covariate, airtemp not transformed, no Fourier Series correction for seasonality)
+```{r}
+mod1.fit <- readRDS("mod1.fit.rds")
+mod1.params <- readRDS("mod1.params.rds")
+mod2.fit <- readRDS("mod2.fit.rds")
+mod2.params <- readRDS("mod2.params.rds")
+mod3.fit <- readRDS("mod3.fit.rds")
+mod3.params <- readRDS("mod3.params.rds")
+mod4.fit <- readRDS("mod4.fit.rds")
+mod4.params <- readRDS("mod4.params.rds")
+
+#Model 1, hypothesis 1 (all separate)
+mod1.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod1.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 2, hypothesis 2 (creeks vs ponds)
+mod2.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod2.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 3, hypothesis 3 (trib vs. trib)
+mod3.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod3.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 4, hypothesis 4 (all same)
+mod4.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod4.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#...these models are not good
+```
+
+###Comparing Original AICc values
+```{r}
+data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
+           AICc=round(c(mod1.fit$AICc,
+                        mod2.fit$AICc,
+                        mod3.fit$AICc,
+                        mod4.fit$AICc),1))
+```
+
+
+
+###correct for seasonality using Fourier Series, and z-scoring airtemperature as an additional covariate
+###Question: Did I do the period correctly? 
+```{r}
+#Correct for seasonality using Fourier Series
+TT = ncol(transformed_dat) # number of time periods/samples
+period = 365 # number of "seasons" (e.g., 12 months per year)
+per.1st = 1 # first "season" (e.g., Jan = 1, July = 7)
+c = diag(period) # create factors for seasons
+for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
+dim(c)
+
+#Create Fourier Series
+cos.t = cos(2 * pi * seq(TT) / period)
+sin.t = sin(2 * pi * seq(TT) / period)
+c.Four = rbind(cos.t,sin.t)
+cor(c.Four[1,],c.Four[2,]) # not correlated!
+matplot(t(c.Four), type="l")
+
+#Now fit model with seasonality AND an additional covariate (airtemp from above)
+airtemp_z <- zscore(airtemp$TAVG) 
+newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=airtemp_z)
+matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
+```
+
+###Checking model results and residuals when log transformed
+```{r }
+mod5.fit <- readRDS("mod5.fit.rds")
+mod5.params <- readRDS("mod5.params.rds")
+mod6.fit <- readRDS("mod6.fit.rds")
+mod6.params <- readRDS("mod6.params.rds")
+mod7.fit <- readRDS("mod7.fit.rds")
+mod7.params <- readRDS("mod7.params.rds")
+mod8.fit <- readRDS("mod8.fit.rds")
+mod8.params <- readRDS("mod8.params.rds")
+
+#Model 5, hypothesis 1 (all separate)
+mod5.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod5.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 6, hypothesis 2 (creeks vs ponds)
+mod6.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod6.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 7, hypothesis 3 (trib vs. trib)
+mod7.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod7.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#Model 8, hypothesis 4 (all same)
+mod8.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod8.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#...these models are not good
+```
+
+###Comparing corrected AICc values
+```{r }
+data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
+           AICc=round(c(mod5.fit$AICc,
+                        mod6.fit$AICc,
+                        mod7.fit$AICc,
+                        mod8.fit$AICc),1))
+
+```
+

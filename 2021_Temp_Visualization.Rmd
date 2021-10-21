@@ -886,6 +886,7 @@ matrix7[26,] <- LL3_daily$mean_temp
 dat_mean <- matrix7
 dat_mean <- log(dat_mean)
 transformed_dat <- zscore(dat_mean)
+saveRDS(transformed_dat,"transformed_dat.rds")
 ```
 
 ##Z-Matrices
@@ -937,6 +938,11 @@ matrix4[c(15,19,23),c(1:3)] <- 0
 matrix5 <-  matrix(nrow=26, ncol=1)
 matrix5[,] <- 1
 
+
+saveRDS(matrix2,"matrix2.rds")
+saveRDS(matrix3,"matrix3.rds")
+saveRDS(matrix4,"matrix4.rds")
+saveRDS(matrix5,"matrix5.rds")
 ```
 
 ##Covariates
@@ -966,10 +972,12 @@ tail(airtemp,30)
 #cut to fit our data (4 July 2020 through 17 July 2021)
 airtemp <- airtemp[c(4:381),]
 str(airtemp)
+saveRDS(airtemp,"airtemp.rds")
 
 #Build the little c matrix, call it matrixc
 matrixc <- matrix(nrow=1,ncol=378)
 matrixc <- t(as.matrix(airtemp$TAVG))
+saveRDS(matrixc,"matrixc.rds")
 
 ```
 
@@ -1021,17 +1029,34 @@ saveRDS(mod4.fit,"mod4.fit.rds")
 saveRDS(mod4.params,"mod4.params.rds")
 #AICc is 10072.8   
 ```
-###Model checking
+
+###Original MARSS model outputs (using airtemp as a covariate, airtemp not transformed, no Fourier Series correction for seasonality)
 ```{r}
 mod1.fit <- readRDS("mod1.fit.rds")
-readRDS("mod1.params.rds")
+mod1.params <- readRDS("mod1.params.rds")
 mod2.fit <- readRDS("mod2.fit.rds")
-readRDS("mod2.params.rds")
-readRDS("mod3.fit.rds")
-readRDS("mod3.params.rds")
-readRDS("mod4.fit.rds")
-readRDS("mod4.params.rds")
+mod2.params <- readRDS("mod2.params.rds")
+mod3.fit <- readRDS("mod3.fit.rds")
+mod3.params <- readRDS("mod3.params.rds")
+mod4.fit <- readRDS("mod4.fit.rds")
+mod4.params <- readRDS("mod4.params.rds")
 
+data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
+           AICc=round(c(mod1.fit$AICc,
+                        mod2.fit$AICc,
+                        mod3.fit$AICc,
+                        mod4.fit$AICc),1))
+
+mod1.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod1.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+mod2.params 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
   for (j in 1:5) {
     plot.ts(residuals<-MARSSresiduals(mod2.fit, type = "tt1")$model.residuals[j, ],
@@ -1040,9 +1065,28 @@ par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
     acf(residuals,na.action = na.pass)
   }
 
+mod3.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod3.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+mod4.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod4.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
 #...these models are not good
 ```
-###correct for seasonality
+
+###correct for seasonality using Fourier Series, and z-scoring airtemperature as an additional covariate
 
 ```{r}
 #Correct for seasonality using Fourier Series
@@ -1061,11 +1105,10 @@ cor(c.Four[1,],c.Four[2,]) # not correlated!
 matplot(t(c.Four), type="l")
 
 #Now fit model with seasonality AND an additional covariate (airtemp from above)
-airtemp_z <- zscore(airtemp$TAVG)
+airtemp_z <- zscore(airtemp$TAVG) 
 newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=airtemp_z)
 head(newcovarsFour_airtemp)
 matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
-newcovarsFour_airtemp[,1:6]
 ```
 
 ###Rerun MARSS
@@ -1127,3 +1170,60 @@ data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
                         mod7.fit$AICc,
                         mod8.fit$AICc),1))
 ```
+
+###Checking model results and residuals when log transformed
+```{r}
+mod5.fit <- readRDS("mod5.fit.rds")
+mod5.params <- readRDS("mod5.params.rds")
+mod6.fit <- readRDS("mod6.fit.rds")
+mod6.params <- readRDS("mod6.params.rds")
+mod7.fit <- readRDS("mod7.fit.rds")
+mod7.params <- readRDS("mod7.params.rds")
+mod8.fit <- readRDS("mod8.fit.rds")
+mod8.params <- readRDS("mod8.params.rds")
+
+data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
+           AICc=round(c(mod5.fit$AICc,
+                        mod6.fit$AICc,
+                        mod7.fit$AICc,
+                        mod8.fit$AICc),1))
+
+mod5.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod5.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+mod6.params 
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod6.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+mod7.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod7.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+mod8.params
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod8.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+
+#...these models are not good
+```
+
