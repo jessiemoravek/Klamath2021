@@ -981,6 +981,46 @@ saveRDS(matrixc,"matrixc.rds")
 
 ```
 
+```{r}
+airtempz <- zscore(airtemp$TAVG)
+at <- as.data.frame(airtempz)
+at <- cbind(at,day)
+wt <- zscore(t(matrix7))
+wt <- as.data.frame(wt)
+wt <- cbind(wt,day)
+
+at_norm <- as.data.frame(airtemp$TAVG)
+at_norm <- cbind(at_norm,day)
+wt_norm <- as.data.frame(t(matrix7))
+wt_norm <- cbind(wt_norm,day)
+
+color <- c("air temp" = "red", "water temp" = "blue")
+ggplot()+
+  geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
+  geom_line(data = wt, aes(x = day, y = V3, color = "water temp"))+
+  labs(x = "Date",
+       y = "Temperature (z-scored)")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("air temp","water temp"))
+
+color <- c("air temp" = "red", "water temp" = "blue")
+ggplot()+
+  geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
+  geom_line(data = wt_norm, aes(x = day, y = V3, color = "water temp"))+
+  labs(x = "Date",
+       y = "Temperature (NOT z-scored)")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("air temp","water temp"))
+
+
+par(mfrow=c(5,2))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod1.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
 
 
 
