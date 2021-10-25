@@ -1,6 +1,8 @@
 ---
 title: "2021_Temp_Visualization"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 Standing questions for Albert:
@@ -850,6 +852,96 @@ LL3_daily <- LL3 %>%
 
 ```
 
+
+#####AirTemp
+```{r}
+airtemp <- read.csv("SlaterButteAirTemp_2020_2021.csv")
+str(airtemp)
+plot(airtemp$TAVG)
+
+#Need to convert F to C, but can only perform this function once per download of the dataset becuase it'll do it again
+airtemp$TAVG <- fahrenheit.to.celsius(airtemp$TAVG)
+airtemp$TMAX <- fahrenheit.to.celsius(airtemp$TMAX)
+airtemp$TMIN <- fahrenheit.to.celsius(airtemp$TMIN)
+
+airtemp$date <- lubridate::mdy(airtemp$DATE)
+missing_data <- airtemp[!complete.cases(airtemp),] #No missing data
+missing_data
+airtemp$day <- lubridate::floor_date(airtemp$date, unit="day")
+str(airtemp)
+#cut to fit our data (1 July 2020 through 13 July 2021)
+airtemp <- airtemp[c(1:381),]
+str(airtemp)
+
+#Can't figure out if there is a shift-- last year I had a 4 day shift but now can't really tell. Will run with 4 day shift agan for fun. 
+#so I need to shift covariate data to the RIGHT by 4 days
+#cut to fit our data (4 July 2020 through 17 July 2021)
+airtemp <- airtemp[c(4:381),]
+str(airtemp)
+saveRDS(airtemp,"airtemp.rds")
+```
+
+###Visualize trends
+```{r}
+airtempz <- zscore(airtemp$TAVG)
+at <- as.data.frame(airtempz)
+at <- cbind(at,day)
+wt <- zscore(t(matrix7))
+wt <- as.data.frame(wt)
+wt <- cbind(wt,day)
+
+at_norm <- as.data.frame(airtemp$TAVG)
+at_norm <- cbind(at_norm,day)
+wt_norm <- as.data.frame(t(matrix7))
+wt_norm <- cbind(wt_norm,day)
+
+color <- c("air temp" = "red", "water temp" = "blue")
+ggplot()+
+  geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
+  geom_line(data = wt, aes(x = day, y = V3, color = "water temp"))+
+  labs(x = "Date",
+       y = "Temperature (z-scored)")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("air temp","water temp"))
+
+color <- c("air temp" = "red", "water temp" = "blue")
+ggplot()+
+  geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
+  geom_line(data = wt_norm, aes(x = day, y = V3, color = "water temp"))+
+  labs(x = "Date",
+       y = "Temperature (NOT z-scored)")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("air temp","water temp"))
+```
+
+
+```{r}
+par(mfrow=c(4,4))
+  for (i in 1:26) {
+    print(ggplot()+
+      geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
+      geom_line(data = wt_norm, aes(x = day, y = wt_norm[,i], color = "water temp"))+
+      labs(x = "Date",
+         y = "Temperature (NOT z-scored)")+
+      theme_classic()+
+      scale_color_manual(values = color, labels = c("air temp","water temp")))
+  }
+
+par(mfrow=c(4,4))
+  for (i in 1:26) {
+    print(ggplot()+
+      geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
+      geom_line(data = wt, aes(x = day, y = wt[,i], color = "water temp"))+
+      labs(x = "Date",
+         y = "Temperature (z-scored)")+
+      theme_classic()+
+      scale_color_manual(values = color, labels = c("air temp","water temp")))
+  }
+
+
+
+```
+
 ##Data Matrix Mean Temp
 Recall: rows are states, columns are time steps. 
 ```{r, include = F}
@@ -948,33 +1040,6 @@ saveRDS(matrix5,"matrix5.rds")
 
 ##Covariates
 ```{r, include=FALSE}
-airtemp <- read.csv("SlaterButteAirTemp_2020_2021.csv")
-str(airtemp)
-plot(airtemp$TAVG)
-
-#Need to convert F to C, but can only perform this function once per download of the dataset becuase it'll do it again
-airtemp$TAVG <- fahrenheit.to.celsius(airtemp$TAVG)
-airtemp$TMAX <- fahrenheit.to.celsius(airtemp$TMAX)
-airtemp$TMIN <- fahrenheit.to.celsius(airtemp$TMIN)
-
-airtemp$date <- lubridate::mdy(airtemp$DATE)
-missing_data <- airtemp[!complete.cases(airtemp),] #No missing data
-missing_data
-airtemp$day <- lubridate::floor_date(airtemp$date, unit="day")
-str(airtemp)
-#cut to fit our data (1 July 2020 through 13 July 2021)
-airtemp <- airtemp[c(1:381),]
-str(airtemp)
-head(airtemp)
-tail(airtemp,30)
-
-#Can't figure out if there is a shift-- last year I had a 4 day shift but now can't really tell. Will run with 4 day shift agan for fun. 
-#so I need to shift covariate data to the RIGHT by 4 days
-#cut to fit our data (4 July 2020 through 17 July 2021)
-airtemp <- airtemp[c(4:381),]
-str(airtemp)
-saveRDS(airtemp,"airtemp.rds")
-
 #Build the little c matrix, call it matrixc
 matrixc <- matrix(nrow=1,ncol=378)
 matrixc <- t(as.matrix(airtemp$TAVG))
@@ -982,46 +1047,7 @@ saveRDS(matrixc,"matrixc.rds")
 
 ```
 
-```{r}
-airtempz <- zscore(airtemp$TAVG)
-at <- as.data.frame(airtempz)
-at <- cbind(at,day)
-wt <- zscore(t(matrix7))
-wt <- as.data.frame(wt)
-wt <- cbind(wt,day)
 
-at_norm <- as.data.frame(airtemp$TAVG)
-at_norm <- cbind(at_norm,day)
-wt_norm <- as.data.frame(t(matrix7))
-wt_norm <- cbind(wt_norm,day)
-
-color <- c("air temp" = "red", "water temp" = "blue")
-ggplot()+
-  geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
-  geom_line(data = wt, aes(x = day, y = V3, color = "water temp"))+
-  labs(x = "Date",
-       y = "Temperature (z-scored)")+
-  theme_classic()+
-  scale_color_manual(values = color, labels = c("air temp","water temp"))
-
-color <- c("air temp" = "red", "water temp" = "blue")
-ggplot()+
-  geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
-  geom_line(data = wt_norm, aes(x = day, y = V3, color = "water temp"))+
-  labs(x = "Date",
-       y = "Temperature (NOT z-scored)")+
-  theme_classic()+
-  scale_color_manual(values = color, labels = c("air temp","water temp"))
-
-
-par(mfrow=c(5,2))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod1.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-```
 
 
 
@@ -1277,7 +1303,6 @@ Recall: rows are states, columns are time steps.
 matrix7 <- readRDS("matrix7.rds")
 #z score the data
 dat_mean2 <- matrix7
-transformed_dat2 <-log(dat_mean2)
 transformed_dat2 <- zscore(transformed_dat2)
 
 saveRDS(transformed_dat2,"transformed_dat2.rds") #NO log transformation here
