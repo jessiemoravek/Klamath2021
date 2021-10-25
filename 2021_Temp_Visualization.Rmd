@@ -887,6 +887,7 @@ dat_mean <- matrix7
 dat_mean <- log(dat_mean)
 transformed_dat <- zscore(dat_mean)
 saveRDS(transformed_dat,"transformed_dat.rds")
+saveRDS(matrix7,"matrix7.rds")
 ```
 
 ##Z-Matrices
@@ -1326,8 +1327,8 @@ mod9$A = "zero" #no trend because we z scored
 mod9$Z = matrix4
 mod9$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
 mod9$Q = "diagonal and unequal" #(also try Equalvarcov)
-mod9$B = "identity" #assuming no species interactions
-mod9$U = "zero" #no trend because we z scored 
+mod9$B = "diagonal and unequal" #assuming no species interactions
+mod9$U = "unequal" #no trend because we z scored 
 mod9$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
 mod9$c = matrixc2
 mod9.fit = MARSS(transformed_dat2, model=mod9, control=list(maxit=10000))
