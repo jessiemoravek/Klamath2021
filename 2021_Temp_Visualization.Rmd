@@ -876,29 +876,21 @@ airtemp <- airtemp[c(4:381),]
 str(airtemp)
 saveRDS(airtemp,"airtemp.rds")
 ```
+
 #####Dataframe
 ```{r}
 daily_means <- cbind(day = day, AP1 = AP1_daily$mean_temp, AP2 = AP3_daily$mean_temp, AP3 = AP3_daily$mean_temp, APck = APck_daily$mean_temp, SP1 = SP1_daily$mean_temp, SP2 = SP2_daily$mean_temp, SPck = SPck_daily$mean_temp, Durazo = Durazo_daily$mean_temp, LS = LS_daily$mean_temp, LSck = LSck_daily$mean_temp, May = May_daily$mean_temp, MayCk = MayCk_daily$mean_temp, FG2 = FG2_daily$mean_temp, FG3 = FG3_daily$mean_temp, FGck = FGck_daily$mean_temp, GP1 = GP1_daily$mean_temp, GP2 = GP2_daily$mean_temp, GP3 = GP3_daily$mean_temp, GPck = GPck_daily$mean_temp, ULout = ULout_daily$mean_temp, UL1 = UL1_daily$mean_temp, UL3 = UL3_daily$mean_temp, ULck = ULck_daily$mean_temp, LL1 = LL1_daily$mean_temp, LL2 = LL2_daily$mean_temp, LL3 = LL3_daily$mean_temp, airtemp = airtemp$TAVG)
 daily_means <- as.data.frame(daily_means)
 str(daily_means)
 
-daily_means_long <- t(daily_means[,-c(1,28)])
+daily_means_long <- t(daily_means[,-c(1,28)]) #Take the daily means and put them into a dataframe formatted for MARSS (not a matrix yet)
 dim(daily_means_long)
 
-covariate <- t(daily_means[,c(28)])
+covariate <- t(daily_means[,c(28)]) #Do the same for the covariates
 
-matplot(t(covariate))
-matplot(daily_means[,18])
+matplot(t(covariate)) #check
+matplot(daily_means[,18]) #check
 
-```
-#####Summer Averages
-```{r}
-creeks <- daily_means[c(31:91), c("APck","SPck","LSck","MayCk","FGck","GPck","ULck", "day")]
-ponds <- daily_means[c(31:91), c("APck","SPck","LSck","MayCk","FGck","GPck","ULck")]
-
-ggplot()+
-  geom_boxplot(data = daily_means_long, aes(x = day, y = site))+
-  theme_classic()
 ```
 
 ###Visualize trends
@@ -961,115 +953,6 @@ pdf("visualize_temp_trends_zscore.pdf")
       scale_color_manual(values = color, labels = c("air temp","water temp")))
   }
 dev.off()
-
-```
-
-
-##Data Matrix Mean Temp
-Recall: rows are states, columns are time steps. 
-```{r, include = F}
-#Daily temperature averages (mean)
-matrix7 <- matrix(nrow=26,ncol=378)
-matrix7[1,] <- AP1_daily$mean_temp
-matrix7[2,] <- AP2_daily$mean_temp
-matrix7[3,] <- AP3_daily$mean_temp
-matrix7[4,] <- APck_daily$mean_temp
-matrix7[5,] <- SP1_daily$mean_temp
-matrix7[6,] <- SP2_daily$mean_temp
-matrix7[7,] <- SPck_daily$mean_temp
-matrix7[8,] <- Durazo_daily$mean_temp
-matrix7[9,] <- LS_daily$mean_temp
-matrix7[10,] <- LSck_daily$mean_temp
-matrix7[11,] <- May_daily$mean_temp
-matrix7[12,] <- MayCk_daily$mean_temp
-matrix7[13,] <- FG2_daily$mean_temp
-matrix7[14,] <- FG3_daily$mean_temp
-matrix7[15,] <- FGck_daily$mean_temp
-matrix7[16,] <- GP1_daily$mean_temp
-matrix7[17,] <- GP2_daily$mean_temp
-matrix7[18,] <- GP3_daily$mean_temp
-matrix7[19,] <- GPck_daily$mean_temp
-matrix7[20,] <- ULout_daily$mean_temp
-matrix7[21,] <- UL1_daily$mean_temp
-matrix7[22,] <- UL3_daily$mean_temp
-matrix7[23,] <- ULck_daily$mean_temp
-matrix7[24,] <- LL1_daily$mean_temp
-matrix7[25,] <- LL2_daily$mean_temp
-matrix7[26,] <- LL3_daily$mean_temp
-
-#log transform and de-mean the data
-dat_mean <- matrix7
-dat_mean <- log(dat_mean)
-transformed_dat <- zscore(dat_mean)
-saveRDS(transformed_dat,"transformed_dat.rds")
-saveRDS(matrix7,"matrix7.rds")
-
-
-```
-
-
-##Z-Matrices
-```{r }
-#Hypothesis 1: All ponds and creeks are separate
-matrix2 <- matrix(nrow=26,ncol=11)
-matrix2[c(1:3),1] <- 1 #Alexander
-matrix2[c(1:3),c(2:11)] <- 0
-matrix2[c(5:6),2] <- 1 #Stender
-matrix2[c(5:6),c(1,3:11)] <- 0 
-matrix2[c(4,7,10,12),3] <- 1 #Seiad Creek
-matrix2[c(4,7,10,12),c(1,2,4:11)] <- 0
-matrix2[8,4] <- 1 #Durazo
-matrix2[8,c(1:3,5:11)] <- 0
-matrix2[9,5] <- 1 #Lower Seiad
-matrix2[9,c(1:4,6:11)] <- 0
-matrix2[11,6] <- 1 #May
-matrix2[11,c(1:5,7:11)] <- 0
-matrix2[c(13:14),7] <- 1 #Fish Gulch
-matrix2[c(13:14),c(1:6,8:11)] <- 0
-matrix2[c(16:18),8] <- 1 #Goodman
-matrix2[c(16:18),c(1:7,9:11)] <- 0
-matrix2[c(20:22),9] <- 1 #Upper Lawrence
-matrix2[c(20:22),c(1:8,10:11)] <- 0
-matrix2[c(24:26),10] <- 1 #Lower Lawrence
-matrix2[c(24:26),c(1:9,11)] <- 0
-matrix2[c(15,19,23),11] <- 1 #Horse Creek
-matrix2[c(15,19,23),c(1:10)] <- 0
-
-#Hypothesis 2: ponds versus creeks
-matrix3 <- matrix(nrow=26, ncol=2)
-matrix3[c(1:3,5:6,8:9,11,13:14,16:18,20:22,24:26),1] <- 1 #All ponds
-matrix3[c(1:3,5:6,8:9,11,13:14,16:18,20:22,24:26),2] <- 0
-matrix3[c(4,7,10,12,15,19,23),1] <- 0 #All creeks
-matrix3[c(4,7,10,12,15,19,23),2] <- 1
-
-#Hypothesis 3: tributary versus tributary
-matrix4 <-matrix(nrow=26,ncol=4)
-matrix4[c(1:3,5:6,8:9,11),1] <- 1  #Seiad Creek Ponds
-matrix4[c(1:3,5:6,8:9,11),c(2:4)] <- 0
-matrix4[c(4,7,10,12),2] <- 1 #Seiad Creek
-matrix4[c(4,7,10,12),c(1,3:4)] <- 0
-matrix4[c(13:14,16:18,20:22,24:26),3] <- 1 #Horse Creek Ponds
-matrix4[c(13:14,16:18,20:22,24:26),c(1,2,4)] <- 0
-matrix4[c(15,19,23),4] <- 1 #Horse Creek
-matrix4[c(15,19,23),c(1:3)] <- 0
-
-#Hypothesis 4: All sensors are the same
-matrix5 <-  matrix(nrow=26, ncol=1)
-matrix5[,] <- 1
-
-
-saveRDS(matrix2,"matrix2.rds")
-saveRDS(matrix3,"matrix3.rds")
-saveRDS(matrix4,"matrix4.rds")
-saveRDS(matrix5,"matrix5.rds")
-```
-
-##Covariates
-```{r, include=FALSE}
-#Build the little c matrix, call it matrixc
-matrixc <- matrix(nrow=1,ncol=378)
-matrixc <- t(as.matrix(airtemp$TAVG))
-saveRDS(matrixc,"matrixc.rds")
 
 ```
 
