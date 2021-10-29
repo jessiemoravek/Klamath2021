@@ -32,6 +32,7 @@ transformed_dat <- zscore(transformed_dat)
 saveRDS(transformed_dat,"transformed_dat.rds")
 
 ```
+
 ##Covariates
 ```{r, include=FALSE}
 #Build the little c matrix, call it matrixc
@@ -41,7 +42,7 @@ saveRDS(matrixc,"matrixc.rds")
 
 ```
 
-##Check data and covariates
+###Check data and covariates
 ```{r, include = F}
 matplot(t(transformed_dat))
 matplot(t(matrixc))
@@ -104,8 +105,6 @@ saveRDS(matrix4,"matrix4.rds")
 saveRDS(matrix5,"matrix5.rds")
 ```
 
-
-
 ##MARSS models
 ```{r}
 #Hypothesis 1, Model 1: all separate
@@ -125,7 +124,7 @@ saveRDS(mod11.params,"mod11.params.rds")
 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
   for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod10.fit, type = "tt1")$model.residuals[j, ],
+    plot.ts(residuals<-MARSSresiduals(mod11.fit, type = "tt1")$model.residuals[j, ],
             ylab = "Residual")
     abline(h = 0, lty = "dashed")
     acf(residuals,na.action = na.pass)
@@ -154,5 +153,14 @@ mod14.fit = MARSS(transformed_dat, model=mod14, control=list(maxit=10000))
 mod14.params =MARSSparamCIs(mod14.fit)
 saveRDS(mod14.fit,"mod14.fit.rds")
 saveRDS(mod14.params,"mod14.params.rds")
+```
+
+###AICc 
+```{r}
+data.frame(Model=c("Model11", "Model12", "Model13", "Model14"),
+           AICc=round(c(mod11.fit$AICc,
+                        mod12.fit$AICc,
+                        mod13.fit$AICc,
+                        mod14.fit$AICc),1))
 ```
 
