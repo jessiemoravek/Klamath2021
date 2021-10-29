@@ -18,17 +18,11 @@ library(gridExtra)
 library(weathermetrics)
 ```
 
-```{r, include = F}
-transformed_dat <- readRDS("transformed_dat.rds")
-matrix2 <- readRDS("matrix2.rds")
-matrix3 <- readRDS("matrix3.rds")
-matrix4 <- readRDS("matrix4.rds")
-matrix5 <- readRDS("matrix5.rds")
-matrixc <- readRDS("matrixc.rds")
-airtemp <- readRDS("airtemp.rds")
-```
 
-###2020 MARSS model outputs: July 7 - July 28 2020 (airtemp as a covariate, but not z scored. No seasonal correction)
+
+##################################################################################
+##2020 MARSS model outputs
+###July 7 - July 28 2020 (airtemp as a covariate, but not z scored. No seasonal correction)
 ```{r}
 mod1.fit.2020 <- readRDS("2020_mod1.fit.rds")
 mod1.params.2020 <- readRDS("2020_mod1.params.rds")
@@ -81,7 +75,7 @@ par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
 
 #...these models are actually okay, but short
 ```
-###Comparing 2020 AICc values
+###AICc 2020
 ```{r}
 data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
            AICc=round(c(mod1.fit.2020$AICc,
@@ -90,9 +84,106 @@ data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
                         mod4.fit.2020$AICc),1))
 ```
 
+##################################################################################
+##2021 MARSS models 
+###Covariates (not z scored) and Mean temps (z scored, log transformed)
+```{r, include = F}
+#Original data matrix creation: Daily temperature averages (mean) 
+matrix7 <- matrix(nrow=26,ncol=378)
+matrix7[1,] <- AP1_daily$mean_temp
+matrix7[2,] <- AP2_daily$mean_temp
+matrix7[3,] <- AP3_daily$mean_temp
+matrix7[4,] <- APck_daily$mean_temp
+matrix7[5,] <- SP1_daily$mean_temp
+matrix7[6,] <- SP2_daily$mean_temp
+matrix7[7,] <- SPck_daily$mean_temp
+matrix7[8,] <- Durazo_daily$mean_temp
+matrix7[9,] <- LS_daily$mean_temp
+matrix7[10,] <- LSck_daily$mean_temp
+matrix7[11,] <- May_daily$mean_temp
+matrix7[12,] <- MayCk_daily$mean_temp
+matrix7[13,] <- FG2_daily$mean_temp
+matrix7[14,] <- FG3_daily$mean_temp
+matrix7[15,] <- FGck_daily$mean_temp
+matrix7[16,] <- GP1_daily$mean_temp
+matrix7[17,] <- GP2_daily$mean_temp
+matrix7[18,] <- GP3_daily$mean_temp
+matrix7[19,] <- GPck_daily$mean_temp
+matrix7[20,] <- ULout_daily$mean_temp
+matrix7[21,] <- UL1_daily$mean_temp
+matrix7[22,] <- UL3_daily$mean_temp
+matrix7[23,] <- ULck_daily$mean_temp
+matrix7[24,] <- LL1_daily$mean_temp
+matrix7[25,] <- LL2_daily$mean_temp
+matrix7[26,] <- LL3_daily$mean_temp
 
+#log transform and de-mean the data
+transformed_dat_0 <- zscore(matrix7)
+transformed_dat_0 <- log(transformed_dat_0)
+saveRDS(transformed_dat_0,"transformed_dat_0.rds")
 
-###Original MARSS model outputs (using airtemp as a covariate, airtemp not transformed, no Fourier Series correction for seasonality)
+```
+
+```{r, include = F}
+matrix2 <- readRDS("matrix2.rds")
+matrix3 <- readRDS("matrix3.rds")
+matrix4 <- readRDS("matrix4.rds")
+matrix5 <- readRDS("matrix5.rds")
+airtemp <- readRDS("airtemp.rds") #raw data
+```
+
+```{r}
+#Build the little c matrix, call it matrixc_0
+matrixc_0 <- matrix(nrow=1,ncol=378)
+matrixc_0 <- t(as.matrix(airtemp$TAVG))
+saveRDS(matrixc_0,"matrixc_0.rds")
+str(matrixc_0)
+
+```
+
+###MARSS models
+```{r }
+#Hypothesis 1, Model 1: All ponds and creeks are separate
+mod1 = list()
+mod1$A = "zero" #no trend because we z scored
+mod1$Z = matrix2
+mod1$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
+mod1$Q = "unconstrained" #leave Q unconstrained because we expect some covariance between sensors (also try Equalvarcov)
+mod1$B = "identity" #assuming no species interactions
+mod1$U = "zero" #no trend because we z scored 
+mod1$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod1$c = matrixc_0
+mod1.fit = MARSS(transformed_dat_0, model=mod1, control=list(maxit=10000))
+mod1.params = MARSSparamCIs(mod1.fit)
+saveRDS(mod1.fit,"mod1.fit.rds")
+saveRDS(mod1.params,"mod1.params.rds")
+
+#Hypothesis 2, Model 3: ponds vs. creeks 
+mod2 <- mod1 
+mod2$Z <- matrix3
+mod2.fit = MARSS(transformed_dat_0, model=mod2, control=list(maxit=10000))
+mod2.params = MARSSparamCIs(mod2.fit)
+saveRDS(mod2.fit,"mod2.fit.rds")
+saveRDS(mod2.params,"mod2.params.rds")
+
+#Hypothesis 3, Model 3: Tributary versus tributary
+mod3 <- mod1
+mod3$Z = matrix4
+mod3.fit = MARSS(transformed_dat_0, model=mod3, control=list(maxit=10000))
+mod3.params = MARSSparamCIs(mod3.fit)
+saveRDS(mod3.fit,"mod3.fit.rds")
+saveRDS(mod3.params,"mod3.params.rds")
+
+#Hypothesis 4, Model 4: All same
+mod4 <- mod1 
+mod4$Z <- matrix5
+mod4.fit = MARSS(transformed_dat_0, model=mod4, control=list(maxit=10000))
+mod4.params =MARSSparamCIs(mod4.fit)
+saveRDS(mod4.fit,"mod4.fit.rds")
+saveRDS(mod4.params,"mod4.params.rds")
+```
+
+###Residuals
 ```{r}
 mod1.fit <- readRDS("mod1.fit.rds")
 mod1.params <- readRDS("mod1.params.rds")
@@ -146,7 +237,7 @@ par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
 #...these models are not good
 ```
 
-###Comparing Original AICc values
+###AICc 2021
 ```{r}
 data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
            AICc=round(c(mod1.fit$AICc,
@@ -155,10 +246,9 @@ data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
                         mod4.fit$AICc),1))
 ```
 
-
-
+###############################################################################################
+##2021 FT MARSS
 ###correct for seasonality using Fourier Series, and z-scoring airtemperature as an additional covariate
-###Question: Did I do the period correctly? 
 ```{r}
 #Correct for seasonality using Fourier Series
 TT = ncol(transformed_dat) # number of time periods/samples
@@ -180,8 +270,50 @@ airtemp_z <- zscore(airtemp$TAVG)
 newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=airtemp_z)
 matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
 ```
+###MARSS models
+```{r }
+#Hypothesis 1, Model 5: All ponds and creeks are separate
+mod5 = list()
+mod5$A = "zero" #no trend because we z scored
+mod5$Z = matrix2
+mod5$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
+mod5$Q = "unconstrained" #leave Q unconstrained because we expect some covariance between sensors (also try Equalvarcov)
+mod5$B = "identity" #assuming no species interactions
+mod5$U = "zero" #no trend because we z scored 
+mod5$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod5$c = newcovarsFour_airtemp
+mod5.fit = MARSS(transformed_dat_0, model=mod5, control=list(maxit=10000))
+mod5.params = MARSSparamCIs(mod5.fit)
+saveRDS(mod5.fit,"mod5.fit.rds")
+saveRDS(mod5.params,"mod5.params.rds")
 
-###Checking model results and residuals when log transformed
+#Hypothesis 2, Model 3: ponds vs. creeks 
+mod6 <- mod5 
+mod6$Z <- matrix3
+mod6.fit = MARSS(transformed_dat_0, model=mod6, control=list(maxit=10000))
+mod6.params = MARSSparamCIs(mod6.fit)
+saveRDS(mod6.fit,"mod6.fit.rds")
+saveRDS(mod6.params,"mod6.params.rds")
+
+#Hypothesis 3, Model 3: Tributary versus tributary
+mod7 <- mod5
+mod7$Z = matrix4
+mod7.fit = MARSS(transformed_dat_0, model=mod7, control=list(maxit=10000))
+mod7.params = MARSSparamCIs(mod7.fit)
+saveRDS(mod7.fit,"mod7.fit.rds")
+saveRDS(mod7.params,"mod7.params.rds")
+
+#Hypothesis 4, Model 4: All same
+mod8 <- mod5 
+mod8$Z <- matrix5
+mod8.fit = MARSS(transformed_dat_0, model=mod8, control=list(maxit=10000))
+mod8.params =MARSSparamCIs(mod8.fit)
+saveRDS(mod8.fit,"mod8.fit.rds")
+saveRDS(mod8.params,"mod8.params.rds")
+
+```
+
+###Residuals
 ```{r }
 mod5.fit <- readRDS("mod5.fit.rds")
 mod5.params <- readRDS("mod5.params.rds")
@@ -235,7 +367,7 @@ par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
 #...these models are not good
 ```
 
-###Comparing corrected AICc values
+###AICc FT
 ```{r }
 data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
            AICc=round(c(mod5.fit$AICc,
@@ -245,5 +377,119 @@ data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
 
 ```
 
+###############################################################################################
+##Fixing transformations
+###Re-run models by NOT log transforming the data, z scoring covariates, and changing Q to diagonal and unequal, NO FT needed
 
+###Data (Z scored only)
+Recall: rows are states, columns are time steps. 
+```{r, include = F}
+matrix7 <- readRDS("matrix7.rds")
+#z score the data
+transformed_dat_1 <- zscore(matrix7)
+saveRDS(transformed_dat_1,"transformed_dat_1.rds") #NO log transformation here
+```
 
+###Covariates (z scored only)
+```{r, include=FALSE}
+airtemp_1 <- zscore(airtemp$TAVG)
+#Build the little c matrix, call it matrixc_1
+matrixc_1 <- matrix(nrow=1,ncol=378)
+matrixc_1 <- t(as.matrix(airtemp_1))
+matrixc_1 <- zscore(matrixc_1)
+saveRDS(matrixc_1,"matrixc_1.rds")
+
+```
+###MARSS models
+```{r}
+#Test on Hypothesis 3 (easy to run)
+mod9 = list()
+mod9$A = "zero" #no trend because we z scored
+mod9$Z = matrix4
+mod9$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
+mod9$Q = "diagonal and unequal" #(also try Equalvarcov)
+mod9$B = "identity" #assuming no species interactions
+mod9$U = "zero" #no trend because we z scored 
+mod9$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod9$c = matrixc_1
+mod9.fit = MARSS(transformed_dat_1, model=mod9, control=list(maxit=10000))
+mod9.params = MARSSparamCIs(mod9.fit)
+saveRDS(mod9.fit,"mod9.fit.rds")
+saveRDS(mod9.params,"mod9.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod9.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
+
+###############################################################################################
+##Removing odd data
+###Re-run model 9 by removing AP3 (short dataset)
+
+###Data (Z scored only)
+Recall: rows are states, columns are time steps. 
+```{r, include = F}
+matrix7 <- readRDS("matrix7.rds")
+#z score the data
+transformed_dat_2 <- zscore(matrix7)
+saveRDS(transformed_dat_2,"transformed_dat_2.rds") #NO log transformation here
+matplot(t(transformed_dat_2))
+
+########Need to remove AP2 as an outlier########
+transformed_dat_2 <- transformed_dat_2[-2,]
+```
+
+###Re-do Z-Matrices
+```{r }
+matrix2 <- readRDS("matrix2.rds")
+matrix3 <- readRDS("matrix3.rds")
+matrix4 <- readRDS("matrix4.rds")
+matrix5 <- readRDS("matrix5.rds")
+
+matrix2 <- matrix2[-2,]
+matrix3 <- matrix3[-2,]
+matrix4 <- matrix4[-2,]
+matrix5 <- matrix5[-2,]
+dim(matrix4)
+```
+
+###Covariates (z scored only)
+```{r, include=FALSE}
+airtemp <- zscore(airtemp$TAVG)
+#Build the little c matrix, call it matrixc_2
+matrixc_2 <- matrix(nrow=1,ncol=378)
+matrixc_2 <- t(as.matrix(airtemp))
+matrixc_2 <- zscore(matrixc_2)
+saveRDS(matrixc_2,"matrixc_2.rds")
+
+```
+###MARSS models
+```{r}
+#Test on Hypothesis 3 (easy to run)
+mod10 = list()
+mod10$A = "zero" #no trend because we z scored
+mod10$Z = matrix4
+mod10$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
+mod10$Q = "diagonal and unequal" #(also try Equalvarcov)
+mod10$B = "identity" #assuming no species interactions
+mod10$U = "zero" #no trend because we z scored 
+mod10$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod10$c = matrixc_1
+mod10.fit = MARSS(transformed_dat_1, model=mod10, control=list(maxit=10000))
+mod10.params = MARSSparamCIs(mod10.fit)
+saveRDS(mod10.fit,"mod10.fit.rds")
+saveRDS(mod10.params,"mod10.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod10.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
+##^That's the one!Albert double checked model 10 and thinks it's good. 

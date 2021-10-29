@@ -21,11 +21,8 @@ library(weathermetrics)
 library(magick)
 ```
 
-
-
-
-### Cleaning datasets, and aligning dates
-#### Alexander Pond 
+## Cleaning datasets, and aligning dates
+### Alexander Pond 
 ```{r, include=FALSE}
 AP1 <- read.csv("Alexander_SN_20870137.csv")
 AP1$date <- lubridate::mdy_hm(AP1$Date_Time)
@@ -142,7 +139,7 @@ plot(APck_daily$day,APck_daily$amp_temp)
 ```
 
 
-#####Stender Pond
+###Stender Pond
 ```{r, include = FALSE}
 SP1 <- read.csv("Stender_SN_20870127.csv")
 SP1$date <- lubridate::mdy_hm(SP1$Date_Time)
@@ -287,7 +284,7 @@ SPck_daily <- SPck %>%
 plot(SPck_daily$day, SPck_daily$amp_temp)
 ```
 
-#####Durazo Pond
+###Durazo Pond
 ```{r, include = FALSE}
 Durazo <- read.csv("Durazo_SN_20878643.csv")
 Durazo$date <- lubridate::mdy_hm(Durazo$Date_Time)
@@ -318,7 +315,7 @@ Durazo_daily <- Durazo %>%
 ```
 
 
-#####Lower Seiad Pond
+###Lower Seiad Pond
 ```{r, include = FALSE}
 LS <- read.csv("LowerSeiad_SN_20878706.csv")
 LS$date <- lubridate::mdy_hm(LS$Date_Time)
@@ -378,7 +375,7 @@ plot(LSck_daily$day,LSck_daily$amp_temp)
 
 ```
 
-#####May Pond
+###May Pond
 ```{r, include = FALSE}
 May <- read.csv("May_SN_20870134.csv")
 May$date <- lubridate::mdy_hm(May$Date_Time)
@@ -435,7 +432,7 @@ MayCk_daily <- MayCk %>%
 
 ```
 
-####Fish Gulch
+###Fish Gulch
 ```{r, include = F}
 FG2 <- read.csv("FishGulch_SN_20870133.csv")
 FG2$date <- lubridate::mdy_hm(FG2$Date_Time) 
@@ -525,7 +522,7 @@ FGck_daily <- FGck %>%
 ```
 
 
-#####Goodman Pond
+###Goodman Pond
 ```{r, include = F}
 GP1 <- read.csv("Goodman_SN_20878644.csv")
 GP1$date <- lubridate::mdy_hm(GP1$Date_Time)
@@ -646,7 +643,7 @@ plot(GPck_daily$day,GPck_daily$amp_temp)
 ```
 
 
-#####Upper Lawrence Pond
+###Upper Lawrence Pond
 ```{r, include = F}
 ULout <- read.csv("UpperLawrence3_SN_20878673.csv")
 ULout$date <- lubridate::mdy_hm(ULout$Date_Time)
@@ -761,7 +758,7 @@ ULck_daily <- ULck %>%
 ```
 
 
-#####Lower Lawrence Pond
+###Lower Lawrence Pond
 ```{r, include = F}
 LL1 <- read.csv("LowerLawrence_SN_20870131.csv")
 LL1$date <- lubridate::mdy_hm(LL1$Date_Time)
@@ -849,7 +846,7 @@ LL3_daily <- LL3 %>%
 ```
 
 
-#####AirTemp
+###AirTemp
 ```{r}
 airtemp <- read.csv("SlaterButteAirTemp_2020_2021.csv")
 str(airtemp)
@@ -866,51 +863,45 @@ missing_data
 airtemp$day <- lubridate::floor_date(airtemp$date, unit="day")
 str(airtemp)
 #cut to fit our data (1 July 2020 through 13 July 2021)
-airtemp <- airtemp[c(1:381),]
-str(airtemp)
-
-#Can't figure out if there is a shift-- last year I had a 4 day shift but now can't really tell. Will run with 4 day shift agan for fun. 
-#so I need to shift covariate data to the RIGHT by 4 days
-#cut to fit our data (4 July 2020 through 17 July 2021)
-airtemp <- airtemp[c(4:381),]
+airtemp <- airtemp[c(1:378),]
 str(airtemp)
 saveRDS(airtemp,"airtemp.rds")
 ```
 
-#####Dataframe
+##Dataframe
 ```{r}
-daily_means <- cbind(day = day, AP1 = AP1_daily$mean_temp, AP2 = AP3_daily$mean_temp, AP3 = AP3_daily$mean_temp, APck = APck_daily$mean_temp, SP1 = SP1_daily$mean_temp, SP2 = SP2_daily$mean_temp, SPck = SPck_daily$mean_temp, Durazo = Durazo_daily$mean_temp, LS = LS_daily$mean_temp, LSck = LSck_daily$mean_temp, May = May_daily$mean_temp, MayCk = MayCk_daily$mean_temp, FG2 = FG2_daily$mean_temp, FG3 = FG3_daily$mean_temp, FGck = FGck_daily$mean_temp, GP1 = GP1_daily$mean_temp, GP2 = GP2_daily$mean_temp, GP3 = GP3_daily$mean_temp, GPck = GPck_daily$mean_temp, ULout = ULout_daily$mean_temp, UL1 = UL1_daily$mean_temp, UL3 = UL3_daily$mean_temp, ULck = ULck_daily$mean_temp, LL1 = LL1_daily$mean_temp, LL2 = LL2_daily$mean_temp, LL3 = LL3_daily$mean_temp, airtemp = airtemp$TAVG)
+daily_means <- cbind(day = day, AP1 = AP1_daily$mean_temp, AP3 = AP3_daily$mean_temp, APck = APck_daily$mean_temp, SP1 = SP1_daily$mean_temp, SP2 = SP2_daily$mean_temp, SPck = SPck_daily$mean_temp, Durazo = Durazo_daily$mean_temp, LS = LS_daily$mean_temp, LSck = LSck_daily$mean_temp, May = May_daily$mean_temp, MayCk = MayCk_daily$mean_temp, FG2 = FG2_daily$mean_temp, FG3 = FG3_daily$mean_temp, FGck = FGck_daily$mean_temp, GP1 = GP1_daily$mean_temp, GP2 = GP2_daily$mean_temp, GP3 = GP3_daily$mean_temp, GPck = GPck_daily$mean_temp, ULout = ULout_daily$mean_temp, UL1 = UL1_daily$mean_temp, UL3 = UL3_daily$mean_temp, ULck = ULck_daily$mean_temp, LL1 = LL1_daily$mean_temp, LL2 = LL2_daily$mean_temp, LL3 = LL3_daily$mean_temp, airtemp = airtemp$TAVG)
 daily_means <- as.data.frame(daily_means)
 str(daily_means)
+#Not including AP2 because not enough data
 
-daily_means_long <- t(daily_means[,-c(1,28)]) #Take the daily means and put them into a dataframe formatted for MARSS (not a matrix yet)
-dim(daily_means_long)
+daily_means_long <- t(daily_means[,-c(1,27)]) #Take the daily means and put them into a dataframe formatted for MARSS (not a matrix yet)
+dim(daily_means_long) #check we did that right
+covariate <- t(daily_means[,c(27)]) #Do the same for the covariates
 
-covariate <- t(daily_means[,c(28)]) #Do the same for the covariates
-
-matplot(t(covariate)) #check
-matplot(daily_means[,18]) #check
+saveRDS(daily_means_long,'daily_means_long.rds')
+saveRDS(covariate,"covariate.rds")
 
 ```
 
-###Visualize trends
+##Visualize trends
 ```{r}
-airtempz <- zscore(airtemp$TAVG)
+airtempz <- zscore(covariate)
 at <- as.data.frame(airtempz)
 at <- cbind(at,day)
-wt <- zscore(t(matrix7))
+wt <- zscore(t(daily_means_long))
 wt <- as.data.frame(wt)
 wt <- cbind(wt,day)
 
-at_norm <- as.data.frame(airtemp$TAVG)
+at_norm <- as.data.frame(covariate)
 at_norm <- cbind(at_norm,day)
-wt_norm <- as.data.frame(t(matrix7))
+wt_norm <- as.data.frame(t(daily_means_long))
 wt_norm <- cbind(wt_norm,day)
 
 color <- c("air temp" = "red", "water temp" = "blue")
 ggplot()+
   geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
-  geom_line(data = wt, aes(x = day, y = V3, color = "water temp"))+
+  geom_line(data = wt, aes(x = day, y = AP3, color = "water temp"))+
   labs(x = "Date",
        y = "Temperature (z-scored)")+
   theme_classic()+
@@ -919,7 +910,7 @@ ggplot()+
 color <- c("air temp" = "red", "water temp" = "blue")
 ggplot()+
   geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
-  geom_line(data = wt_norm, aes(x = day, y = V3, color = "water temp"))+
+  geom_line(data = wt_norm, aes(x = day, y = AP3, color = "water temp"))+
   labs(x = "Date",
        y = "Temperature (NOT z-scored)")+
   theme_classic()+
@@ -933,10 +924,10 @@ pdf("visualize_temp_trends_no_zscore.pdf") # plot name
 color <- c("air temp" = "red", "water temp" = "blue")
 for (i in 1:26) {
     print(ggplot()+
-      geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
+      geom_line(data = at_norm, aes(x = day, y = covariate, color = "air temp"))+
       geom_line(data = wt_norm, aes(x = day, y = wt_norm[,i], color = "water temp"))+
       labs(x = "Date",
-         y = "Temperature (NOT z-scored)")
+         y = "Temperature (NOT z-scored)") +
       theme_classic()+
       scale_color_manual(values = color, labels = c("air temp","water temp")))
   }
@@ -957,376 +948,4 @@ dev.off()
 ```
 
 
-
-
-
-##MARSS models with Covariates and Mean temps
-```{r }
-#Hypothesis 1, Model 1: All ponds and creeks are separate
-mod1 = list()
-mod1$A = "zero" #no trend because we z scored
-mod1$Z = matrix2
-mod1$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
-mod1$Q = "unconstrained" #leave Q unconstrained because we expect some covariance between sensors (also try Equalvarcov)
-mod1$B = "identity" #assuming no species interactions
-mod1$U = "zero" #no trend because we z scored 
-mod1$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
-mod1$c = matrixc
-mod1.fit = MARSS(transformed_dat, model=mod1, control=list(maxit=10000))
-mod1.params = MARSSparamCIs(mod1.fit)
-saveRDS(mod1.fit,"mod1.fit.rds")
-saveRDS(mod1.params,"mod1.params.rds")
-#AICc is -444.0914                 
-
-#Hypothesis 2, Model 3: ponds vs. creeks 
-mod2 <- mod1 
-mod2$Z <- matrix3
-mod2.fit = MARSS(transformed_dat, model=mod2, control=list(maxit=10000))
-mod2.params = MARSSparamCIs(mod2.fit)
-saveRDS(mod2.fit,"mod2.fit.rds")
-saveRDS(mod2.params,"mod2.params.rds")
-#AICc is 9799.817                 
-
-#Hypothesis 3, Model 3: Tributary versus tributary
-mod3 <- mod1
-mod3$Z = matrix4
-mod3.fit = MARSS(transformed_dat, model=mod3, control=list(maxit=10000))
-mod3.params = MARSSparamCIs(mod3.fit)
-saveRDS(mod3.fit,"mod3.fit.rds")
-saveRDS(mod3.params,"mod3.params.rds")
-#AICc is 3711.734                          
-
-#Hypothesis 4, Model 4: All same
-mod4 <- mod1 
-mod4$Z <- matrix5
-mod4.fit = MARSS(transformed_dat, model=mod4, control=list(maxit=10000))
-mod4.params =MARSSparamCIs(mod4.fit)
-saveRDS(mod4.fit,"mod4.fit.rds")
-saveRDS(mod4.params,"mod4.params.rds")
-#AICc is 10072.8   
-```
-
-###Original MARSS model outputs (using airtemp as a covariate, airtemp not transformed, no Fourier Series correction for seasonality)
-```{r}
-mod1.fit <- readRDS("mod1.fit.rds")
-mod1.params <- readRDS("mod1.params.rds")
-mod2.fit <- readRDS("mod2.fit.rds")
-mod2.params <- readRDS("mod2.params.rds")
-mod3.fit <- readRDS("mod3.fit.rds")
-mod3.params <- readRDS("mod3.params.rds")
-mod4.fit <- readRDS("mod4.fit.rds")
-mod4.params <- readRDS("mod4.params.rds")
-
-data.frame(Model=c("Model1", "Model2", "Model3", "Model4"),
-           AICc=round(c(mod1.fit$AICc,
-                        mod2.fit$AICc,
-                        mod3.fit$AICc,
-                        mod4.fit$AICc),1))
-
-mod1.params 
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod1.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod2.params 
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod2.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod3.params
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod3.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod4.params
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod4.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-#...these models are not good
-```
-#######################################################################
-###correct for seasonality using Fourier Series, and z-scoring airtemperature as an additional covariate
-
-```{r}
-#Correct for seasonality using Fourier Series
-TT = ncol(transformed_dat) # number of time periods/samples
-period = 365 # number of "seasons" (e.g., 12 months per year)
-per.1st = 1 # first "season" (e.g., Jan = 1, July = 7)
-c = diag(period) # create factors for seasons
-for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
-dim(c)
-
-#Create Fourier Series
-cos.t = cos(2 * pi * seq(TT) / period)
-sin.t = sin(2 * pi * seq(TT) / period)
-c.Four = rbind(cos.t,sin.t)
-cor(c.Four[1,],c.Four[2,]) # not correlated!
-matplot(t(c.Four), type="l")
-
-#Now fit model with seasonality AND an additional covariate (airtemp from above)
-airtemp_z <- zscore(airtemp$TAVG) 
-newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=airtemp_z)
-head(newcovarsFour_airtemp)
-matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
-```
-
-###Rerun MARSS with FT AND air temp covariate
-```{r }
-#Hypothesis 1, Model 5: All ponds and creeks are separate
-mod5 = list()
-mod5$A = "zero" #no trend because we z scored
-mod5$Z = matrix2
-mod5$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
-mod5$Q = "unconstrained" #leave Q unconstrained because we expect some covariance between sensors (also try Equalvarcov)
-mod5$B = "identity" #assuming no species interactions
-mod5$U = "zero" #no trend because we z scored 
-mod5$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
-mod5$c = newcovarsFour_airtemp
-mod5.fit = MARSS(transformed_dat, model=mod5, control=list(maxit=10000))
-mod5.params = MARSSparamCIs(mod5.fit)
-saveRDS(mod5.fit,"mod5.fit.rds")
-saveRDS(mod5.params,"mod5.params.rds")
-#AICc is -548.1774
-
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod5.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-#Hypothesis 2, Model 3: ponds vs. creeks 
-mod6 <- mod5 
-mod6$Z <- matrix3
-mod6.fit = MARSS(transformed_dat, model=mod6, control=list(maxit=10000))
-mod6.params = MARSSparamCIs(mod6.fit)
-saveRDS(mod6.fit,"mod6.fit.rds")
-saveRDS(mod6.params,"mod6.params.rds")
-#AICc is 9799.817                 
-
-#Hypothesis 3, Model 3: Tributary versus tributary
-mod7 <- mod5
-mod7$Z = matrix4
-mod7.fit = MARSS(transformed_dat, model=mod7, control=list(maxit=10000))
-mod7.params = MARSSparamCIs(mod7.fit)
-saveRDS(mod7.fit,"mod7.fit.rds")
-saveRDS(mod7.params,"mod7.params.rds")
-#AICc is 3711.734                          
-
-#Hypothesis 4, Model 4: All same
-mod8 <- mod5 
-mod8$Z <- matrix5
-mod8.fit = MARSS(transformed_dat, model=mod8, control=list(maxit=10000))
-mod8.params =MARSSparamCIs(mod8.fit)
-saveRDS(mod8.fit,"mod8.fit.rds")
-saveRDS(mod8.params,"mod8.params.rds")
-#AICc is 10072.8  
-
-data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
-           AICc=round(c(mod5.fit$AICc,
-                        mod6.fit$AICc,
-                        mod7.fit$AICc,
-                        mod8.fit$AICc),1))
-```
-
-###Checking model results and residuals when log transformed
-```{r}
-mod5.fit <- readRDS("mod5.fit.rds")
-mod5.params <- readRDS("mod5.params.rds")
-mod6.fit <- readRDS("mod6.fit.rds")
-mod6.params <- readRDS("mod6.params.rds")
-mod7.fit <- readRDS("mod7.fit.rds")
-mod7.params <- readRDS("mod7.params.rds")
-mod8.fit <- readRDS("mod8.fit.rds")
-mod8.params <- readRDS("mod8.params.rds")
-
-data.frame(Model=c("Model5", "Model6", "Model7", "Model8"),
-           AICc=round(c(mod5.fit$AICc,
-                        mod6.fit$AICc,
-                        mod7.fit$AICc,
-                        mod8.fit$AICc),1))
-
-mod5.params 
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod5.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod6.params 
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod6.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod7.params
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod7.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-mod8.params
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod8.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-
-#...these models are not good
-```
-########################################################################################
-###Re-run models by NOT log transforming the data and changing Q to diagonal and unequal
-####Should not need FT if also have airtemp covariates. 
-
-##Data Matrix Mean Temp
-Recall: rows are states, columns are time steps. 
-```{r, include = F}
-matrix7 <- readRDS("matrix7.rds")
-#z score the data
-dat_mean2 <- matrix7
-transformed_dat2 <- zscore(dat_mean2)
-matplot(t(transformed_dat2))
-#get rid of AP3
-#transformed_dat2 <- transformed_dat2[-2,]
-
-saveRDS(transformed_dat2,"transformed_dat2.rds") #NO log transformation here
-```
-
-##Z-Matrices
-```{r }
-matrix2 <- readRDS("matrix2.rds")
-matrix3 <- readRDS("matrix3.rds")
-matrix4 <- readRDS("matrix4.rds")
-matrix5 <- readRDS("matrix5.rds")
-
-matrix4 <- matrix4[-2,]
-dim(matrix4)
-```
-
-##Covariates -- no shift in air temp
-```{r, include=FALSE}
-airtemp <- read.csv("SlaterButteAirTemp_2020_2021.csv")
-str(airtemp)
-plot(airtemp$TAVG)
-
-#Need to convert F to C, but can only perform this function once per download of the dataset becuase it'll do it again
-airtemp$TAVG <- fahrenheit.to.celsius(airtemp$TAVG)
-airtemp$TMAX <- fahrenheit.to.celsius(airtemp$TMAX)
-airtemp$TMIN <- fahrenheit.to.celsius(airtemp$TMIN)
-
-airtemp$date <- lubridate::mdy(airtemp$DATE)
-missing_data <- airtemp[!complete.cases(airtemp),] #No missing data
-missing_data
-airtemp$day <- lubridate::floor_date(airtemp$date, unit="day")
-str(airtemp)
-#cut to fit our data (1 July 2020 through 13 July 2021) ###NO SHIFT
-airtemp2 <- airtemp[c(1:378),]
-saveRDS(airtemp2,"airtemp2.rds")
-
-#Build the little c matrix, call it matrixc
-matrixc2 <- matrix(nrow=1,ncol=378)
-matrixc2 <- t(as.matrix(airtemp2$TAVG))
-matrixc2 <- zscore(matrixc2)
-saveRDS(matrixc2,"matrixc2.rds")
-str(matrixc2)
-matplot(t(matrixc2))
-
-```
-
-```{r}
-#Test on Hypothesis 3 
-mod9 = list()
-mod9$A = "zero" #no trend because we z scored
-mod9$Z = matrix4
-mod9$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
-mod9$Q = "diagonal and unequal" #(also try Equalvarcov)
-mod9$B = "identity" #assuming no species interactions
-mod9$U = "zero" #no trend because we z scored 
-mod9$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
-mod9$c = matrixc2
-mod9.fit = MARSS(transformed_dat2, model=mod9, control=list(maxit=10000))
-mod9.params = MARSSparamCIs(mod9.fit)
-saveRDS(mod9.fit,"mod9.fit.rds")
-saveRDS(mod9.params,"mod9.params.rds")
-
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod9.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-```
-########################################################################################
-###Re-run models by with JUST FT, no airtemp covar, and no log transform on dat
-```{r}
-#Correct for seasonality using Fourier Series
-TT = ncol(transformed_dat) # number of time periods/samples
-period = 365 # number of "seasons" (e.g., 12 months per year)
-per.1st = 1 # first "season" (e.g., Jan = 1, July = 7)
-c = diag(period) # create factors for seasons
-for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
-dim(c)
-
-#Create Fourier Series
-cos.t = cos(2 * pi * seq(TT) / period)
-sin.t = sin(2 * pi * seq(TT) / period)
-c.Four = rbind(cos.t,sin.t)
-cor(c.Four[1,],c.Four[2,]) # not correlated!
-matplot(t(c.Four), type="l")
-
-```
-
-```{r}
-#Test on Hypothesis 3 
-mod9 = list()
-mod9$A = "zero" #no trend because we z scored
-mod9$Z = matrix4
-mod9$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
-mod9$Q = "diagonal and unequal" #(also try Equalvarcov)
-mod9$B = "identity" #assuming no species interactions
-mod9$U = "zero" #no trend because we z scored 
-mod9$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
-mod9$c = c.Four
-mod9.fit = MARSS(transformed_dat2, model=mod9, control=list(maxit=10000))
-mod9.params = MARSSparamCIs(mod9.fit)
-saveRDS(mod9.fit,"mod9.fit.rds")
-saveRDS(mod9.params,"mod9.params.rds")
-
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod9.fit, type = "tt1")$model.residuals[j, ],
-            ylab = "Residual")
-    abline(h = 0, lty = "dashed")
-    acf(residuals,na.action = na.pass)
-  }
-```
 
