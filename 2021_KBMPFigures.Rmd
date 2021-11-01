@@ -2,3 +2,95 @@
 title: "2021_KBMPFigures"
 output: html_document
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+library(astsa)
+library(forecast)
+library(dplyr)
+library(pander)
+library(MARSS)
+library(MASS)
+library(gridExtra)
+library(weathermetrics)
+library(magick)
+library(reshape2)
+```
+
+##Read in data
+```{r}
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") 
+day <- as.data.frame(day) #convert "day" to data frame
+
+daily_means_long <- readRDS('daily_means_long.rds')
+data <- as.data.frame(t(daily_means_long))
+data <- cbind(data,day)
+covariate <- readRDS("covariate.rds")
+```
+
+##Seiad Creek
+```{r}
+data_long <- gather(data, site, value, -day)
+ggplot()+
+  geom_line(data = data_long, aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()
+
+ggplot(subset(data_long, site %in% c("APck","SPck","LSck","MayCk", "May")))+
+  geom_line(aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()
+
+ggplot(subset(data_long, site %in% c("APck","SPck","LSck","MayCk")))+
+  geom_line(aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()
+
+
+
+
+
+color <- c("air temp" = "red", "water temp" = "blue")
+ggplot()+
+  geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
+  geom_line(data = wt_norm, aes(x = day, y = AP3, color = "water temp"))+
+  labs(x = "Date",
+       y = "Temperature (NOT z-scored)")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("air temp","water temp"))
+```
+```{r}
+library(gridExtra)
+#create plots
+
+pdf("visualize_temp_trends_no_zscore.pdf") # plot name
+color <- c("air temp" = "red", "water temp" = "blue")
+for (i in 1:26) {
+    print(ggplot()+
+      geom_line(data = at_norm, aes(x = day, y = covariate, color = "air temp"))+
+      geom_line(data = wt_norm, aes(x = day, y = wt_norm[,i], color = "water temp"))+
+      labs(x = "Date",
+         y = "Temperature (NOT z-scored)") +
+      theme_classic()+
+      scale_color_manual(values = color, labels = c("air temp","water temp")))
+  }
+dev.off()
+
+pdf("visualize_temp_trends_zscore.pdf")
+  for (i in 1:26) {
+    print(ggplot()+
+      geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
+      geom_line(data = wt, aes(x = day, y = wt[,i], color = "water temp"))+
+      labs(x = "Date",
+         y = "Temperature (z-scored)")+
+      theme_classic()+
+      scale_color_manual(values = color, labels = c("air temp","water temp")))
+  }
+dev.off()
+
+```
