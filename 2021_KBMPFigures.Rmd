@@ -33,11 +33,14 @@ covariate <- readRDS("covariate.rds")
 ##Seiad Creek
 ```{r}
 data_long <- gather(data, site, value, -day)
+png("Fig_Full_TimeSeries.png", width = 900, height = 400)
 ggplot()+
   geom_line(data = data_long, aes(x = day, value, col = site))+
   labs(x = "Date",
        y = "Temperature (oC)")+
-  theme_classic()
+  theme_classic()+
+  theme(text=element_text(size=25), legend.position = "none")
+dev.off()
 
 ggplot(subset(data_long, site %in% c("APck","SPck","LSck","MayCk", "May")))+
   geom_line(aes(x = day, value, col = site))+
