@@ -19,7 +19,6 @@ library(magick)
 library(reshape2)
 library(RColorBrewer)
 library(colorspace)
-
 ```
 
 ##Read in data
