@@ -19,6 +19,8 @@ library(magick)
 library(reshape2)
 library(RColorBrewer)
 library(colorspace)
+library(grid)
+install.packages(cowplot)
 ```
 
 ##Read in data
@@ -129,7 +131,8 @@ ggplot(subset(data_summer, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))
   labs(x = "Site",
        y = "Temperature (oC)")+
   theme_classic()+
-  theme(text=element_text(size=20))
+  theme(text=element_text(size=20))+
+  facet_wrap(~site, nrow = 1, ncol = 2)
 dev.off()
 
 png("Fig_Horse_Boxplot.png", width = 500, height = 400)
@@ -140,6 +143,29 @@ png("Fig_Horse_Boxplot.png", width = 500, height = 400)
   theme_classic()+
   theme(text=element_text(size=20))
 dev.off()
+
+g1 <- ggplot(subset(data_summer, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  labs(x = "Site",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))+
+  facet_wrap(~site, nrow = 1, ncol = 2)
+
+g2 <- ggplot(subset(data_summer, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  labs(x = "Site",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+
+plot_grid(g1,
+          g2,
+          labels = c('Seiad Creek','Horse Creek'),
+          label_x = 0.2,
+          ncol = 2)
+grid.newpage()
+grid.draw(cbind(ggplotGrob(g1), ggplotGrob(g2), size = "last"))
 ```
 
 #Creeks and Ponds are different
