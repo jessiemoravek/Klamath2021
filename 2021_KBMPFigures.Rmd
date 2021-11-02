@@ -20,7 +20,7 @@ library(reshape2)
 library(RColorBrewer)
 library(colorspace)
 library(grid)
-install.packages(cowplot)
+library(cowplot)
 ```
 
 ##Read in data
@@ -35,7 +35,14 @@ data <- as.data.frame(t(daily_means_long))
 data <- cbind(data,day)
 datamax <- as.data.frame(t(daily_max_long))
 datamax <- cbind(datamax,day)
+
 covariate <- readRDS("covariate.rds")
+
+seiadcreek <- read.csv('SeiadCreek_Historical.csv')
+seiadcreek$date <- lubridate::mdy_hm(seiadcreek$Date_Time)
+klamath <- read.csv('Klamath_Historical.csv')
+klamath$date <- lubridate::mdy_hm(klamath$Date_Time)
+
 ```
 
 ##Seiad Creek
@@ -89,33 +96,13 @@ ggplot()+
 
 
 ```{r}
-library(gridExtra)
-#create plots
-
-pdf("visualize_temp_trends_no_zscore.pdf") # plot name
-color <- c("air temp" = "red", "water temp" = "blue")
-for (i in 1:26) {
-    print(ggplot()+
-      geom_line(data = at_norm, aes(x = day, y = covariate, color = "air temp"))+
-      geom_line(data = wt_norm, aes(x = day, y = wt_norm[,i], color = "water temp"))+
-      labs(x = "Date",
-         y = "Temperature (NOT z-scored)") +
-      theme_classic()+
-      scale_color_manual(values = color, labels = c("air temp","water temp")))
-  }
-dev.off()
-
-pdf("visualize_temp_trends_zscore.pdf")
-  for (i in 1:26) {
-    print(ggplot()+
-      geom_line(data = at, aes(x = day, y = airtempz, color = "air temp"))+
-      geom_line(data = wt, aes(x = day, y = wt[,i], color = "water temp"))+
-      labs(x = "Date",
-         y = "Temperature (z-scored)")+
-      theme_classic()+
-      scale_color_manual(values = color, labels = c("air temp","water temp")))
-  }
-dev.off()
+ggplot()+
+  geom_line(data = klamath, aes(x = date, y = Temp))+
+  geom_line(data = seiadcreek, aes(x = date, y = Temp))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=25))
 
 ```
 #boxplots
@@ -144,28 +131,6 @@ png("Fig_Horse_Boxplot.png", width = 500, height = 400)
   theme(text=element_text(size=20))
 dev.off()
 
-g1 <- ggplot(subset(data_summer, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))+
-  geom_boxplot(aes(x = site, value, col = day))+
-  labs(x = "Site",
-       y = "Temperature (oC)")+
-  theme_classic()+
-  theme(text=element_text(size=20))+
-  facet_wrap(~site, nrow = 1, ncol = 2)
-
-g2 <- ggplot(subset(data_summer, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
-  geom_boxplot(aes(x = site, value, col = day))+
-  labs(x = "Site",
-       y = "Temperature (oC)")+
-  theme_classic()+
-  theme(text=element_text(size=20))
-
-plot_grid(g1,
-          g2,
-          labels = c('Seiad Creek','Horse Creek'),
-          label_x = 0.2,
-          ncol = 2)
-grid.newpage()
-grid.draw(cbind(ggplotGrob(g1), ggplotGrob(g2), size = "last"))
 ```
 
 #Creeks and Ponds are different
