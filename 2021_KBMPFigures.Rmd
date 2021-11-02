@@ -17,6 +17,9 @@ library(gridExtra)
 library(weathermetrics)
 library(magick)
 library(reshape2)
+library(RColorBrewer)
+library(colorspace)
+
 ```
 
 ##Read in data
@@ -25,14 +28,21 @@ day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day")
 day <- as.data.frame(day) #convert "day" to data frame
 
 daily_means_long <- readRDS('daily_means_long.rds')
+daily_max_long <- readRDS("daily_max_long.rds")
+
 data <- as.data.frame(t(daily_means_long))
 data <- cbind(data,day)
+datamax <- as.data.frame(t(daily_max_long))
+datamax <- cbind(datamax,day)
 covariate <- readRDS("covariate.rds")
 ```
 
 ##Seiad Creek
 ```{r}
+#Format data long
 data_long <- gather(data, site, value, -day)
+
+#All sites
 png("Fig_Full_TimeSeries.png", width = 900, height = 400)
 ggplot()+
   geom_line(data = data_long, aes(x = day, value, col = site))+
@@ -42,19 +52,27 @@ ggplot()+
   theme(text=element_text(size=25), legend.position = "none")
 dev.off()
 
-ggplot(subset(data_long, site %in% c("APck","SPck","LSck","MayCk", "May")))+
+#Seiad Creek + Ponds all blue
+ggplot(subset(data_long, site %in% c("MayCk","AP1","SP1","Durazo","LS","May")))+
   geom_line(aes(x = day, value, col = site))+
   labs(x = "Date",
        y = "Temperature (oC)")+
-  theme_classic()
+  theme_classic()+
+  scale_color_manual(values = brewer.pal(6,"Blues"))+
+  theme(text=element_text(size=25))
 
-ggplot(subset(data_long, site %in% c("APck","SPck","LSck","MayCk")))+
-  geom_line(aes(x = day, value, col = site))+
+#Seiad Creek + Ponds colorful
+color1 <- brewer.pal(5,"Blues")
+color2 <- "salmon"
+
+ggplot()+
+  geom_line(data = subset(data_long, site %in% c("AP1","SP1","Durazo","LS","May")), aes(x = day, value, col = site))+
+  geom_line(data = subset(data_long, site %in% "MayCk"), aes(x = day, value, col = site)) + 
   labs(x = "Date",
        y = "Temperature (oC)")+
-  theme_classic()
-
-
+  theme_classic()+
+  theme(text=element_text(size=25))+
+  scale_color_continuous_sequential()
 
 
 
@@ -67,6 +85,8 @@ ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("air temp","water temp"))
 ```
+
+
 ```{r}
 library(gridExtra)
 #create plots
@@ -97,3 +117,73 @@ pdf("visualize_temp_trends_zscore.pdf")
 dev.off()
 
 ```
+#boxplots
+```{r}
+#Format data long
+data_max_long <- gather(datamax, site, value, -day)
+
+data_summer <- data_max_long %>%filter(day>'2020-07-15'& day < '2020-09-15')
+
+png("Fig_Seiad_Boxplot.png", width = 500, height = 400)
+ggplot(subset(data_summer, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  labs(x = "Site",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+
+png("Fig_Horse_Boxplot.png", width = 500, height = 400)
+  ggplot(subset(data_summer, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  labs(x = "Site",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+```
+
+#Creeks and Ponds are different
+```{r}
+png("Fig_Seiad_TimeSeries.png", width = 500, height = 400)
+ggplot()+
+  geom_line(data = subset(data_long, site %in% c("AP1","SP1","Durazo","LS","May", "LSck")), aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+
+png("Fig_Horse_TimeSeries.png", width = 500, height = 400)
+ggplot()+
+  geom_line(data = subset(data_long, site %in% c("FG1","UL1","LL2","GP2","ULck")), aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+```
+
+#Summer: Ponds are cooler than creeks
+```{r}
+data_summer <- data_long %>%filter(day>'2020-07-15'& day < '2020-09-15')
+png("Fig_Horse_Summer.png", width = 500, height = 400)
+ggplot()+
+  geom_line(data = subset(data_summer, site %in% c("FG1","UL1","LL2","GP2","ULck")), aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+
+data_summer <- data_long %>%filter(day>'2020-07-15'& day < '2020-09-15')
+png("Fig_Seiad_Summer.png", width = 500, height = 400)
+ggplot()+
+  geom_line(data = subset(data_summer, site %in% c("AP1","SP1","Durazo","LS","May", "MayCk")), aes(x = day, value, col = site))+
+  labs(x = "Date",
+       y = "Temperature (oC)")+
+  theme_classic()+
+  theme(text=element_text(size=20))
+dev.off()
+```
+
