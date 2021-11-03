@@ -30,11 +30,14 @@ day <- as.data.frame(day) #convert "day" to data frame
 
 daily_means_long <- readRDS('daily_means_long.rds')
 daily_max_long <- readRDS("daily_max_long.rds")
+daily_min_long <- readRDS("daily_min_long.rds")
 
 data <- as.data.frame(t(daily_means_long))
 data <- cbind(data,day)
 datamax <- as.data.frame(t(daily_max_long))
 datamax <- cbind(datamax,day)
+datamin <- as.data.frame(t(daily_min_long))
+datamin <- cbind(datamin,day)
 
 covariate <- readRDS("covariate.rds")
 
@@ -45,7 +48,7 @@ klamath$date <- lubridate::mdy_hm(klamath$Date_Time)
 
 ```
 
-##Seiad Creek
+#MARSS Model
 ```{r}
 #Format data long
 data_long <- gather(data, site, value, -day)
@@ -59,7 +62,10 @@ ggplot()+
   theme_classic()+
   theme(text=element_text(size=25), legend.position = "none")
 dev.off()
+```
 
+#Blue Ponds
+```{r}
 #Seiad Creek + Ponds all blue
 ggplot(subset(data_long, site %in% c("MayCk","AP1","SP1","Durazo","LS","May")))+
   geom_line(aes(x = day, value, col = site))+
@@ -73,62 +79,93 @@ ggplot(subset(data_long, site %in% c("MayCk","AP1","SP1","Durazo","LS","May")))+
 color1 <- brewer.pal(5,"Blues")
 color2 <- "salmon"
 
-ggplot()+
-  geom_line(data = subset(data_long, site %in% c("AP1","SP1","Durazo","LS","May")), aes(x = day, value, col = site))+
-  geom_line(data = subset(data_long, site %in% "MayCk"), aes(x = day, value, col = site)) + 
-  labs(x = "Date",
-       y = "Temperature (oC)")+
-  theme_classic()+
-  theme(text=element_text(size=25))+
-  scale_color_continuous_sequential()
-
-
-
-color <- c("air temp" = "red", "water temp" = "blue")
-ggplot()+
-  geom_line(data = at_norm, aes(x = day, y = airtemp$TAVG, color = "air temp"))+
-  geom_line(data = wt_norm, aes(x = day, y = AP3, color = "water temp"))+
-  labs(x = "Date",
-       y = "Temperature (NOT z-scored)")+
-  theme_classic()+
-  scale_color_manual(values = color, labels = c("air temp","water temp"))
 ```
 
-
+#HOT Klamath and Seiad Creek temperatures
 ```{r}
-ggplot()+
-  geom_line(data = klamath, aes(x = date, y = Temp))+
-  geom_line(data = seiadcreek, aes(x = date, y = Temp))+
-  labs(x = "Date",
-       y = "Temperature (oC)")+
-  theme_classic()+
-  theme(text=element_text(size=25))
+#Clean up Klamath time series
+klamath$halfhour <- lubridate::floor_date(klamath$date, unit="30 min")
+klamath <- klamath %>%filter(date>"2010-12-16"& date < "2017-11-02")
+klamath <- tidyr::complete(klamath, halfhour = seq(as.POSIXct("2010-12-16"), as.POSIXct("2017-11-02"),by = "30 min"))
+tail(klamath)
 
+#Clean up Seiad Creek time series
+seiadcreek$hour <- lubridate::floor_date(seiadcreek$date, unit="hour")
+seiadcreek <- seiadcreek %>%filter(date>"2010-12-16"& date < "2017-11-02")
+seiadcreek <- tidyr::complete(seiadcreek, hour = seq(as.POSIXct("2010-12-16"), as.POSIXct("2017-11-02"),by = "hour"))
+
+png("Fig_Klamath_SeiadCk.png", width = 900, height = 400)
+ggplot()+
+  geom_line(data = klamath, aes(x = halfhour, y = Temp, color = "Klamath"))+
+  geom_line(data = seiadcreek, aes(x = hour, y = Temp, color = "Seiad Creek"))+
+  labs(x = "Year",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=20), legend.position = "bottom")+
+  scale_colour_manual("", values = c("Klamath"="gold", "Seiad Creek"="salmon")) +
+  scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30) 
+dev.off()
 ```
-#boxplots
+#Summer boxplots
 ```{r}
 #Format data long
 data_max_long <- gather(datamax, site, value, -day)
-
 data_summer <- data_max_long %>%filter(day>'2020-07-15'& day < '2020-09-15')
 
 png("Fig_Seiad_Boxplot.png", width = 500, height = 400)
 ggplot(subset(data_summer, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))+
   geom_boxplot(aes(x = site, value, col = day))+
-  labs(x = "Site",
-       y = "Temperature (oC)")+
   theme_classic()+
   theme(text=element_text(size=20))+
-  facet_wrap(~site, nrow = 1, ncol = 2)
+  scale_x_discrete(name ="Site", 
+                   limits = c("AP1","SP2","Durazo","LS","May","SPck"),
+                    labels=c("AP1" = "Alexander","SP2"= "Stender","Durazo"=
+                               "Durazo","LS" = "LowerSeiad","May"="May","SPck" = "SeiadCreek"))+
+  scale_y_continuous(name="Temperature (C)",limits=c(12.5, 22.5))
 dev.off()
 
 png("Fig_Horse_Boxplot.png", width = 500, height = 400)
-  ggplot(subset(data_summer, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
+ggplot(subset(data_summer, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
   geom_boxplot(aes(x = site, value, col = day))+
-  labs(x = "Site",
-       y = "Temperature (oC)")+
   theme_classic()+
-  theme(text=element_text(size=20))
+  theme(text=element_text(size=20))+
+  scale_x_discrete(name ="Site", 
+                   limits = c("FG3","UL1","LL2","GP2","ULck"),
+                    labels=c("FG3" = "FishGulch","UL1"= "UpperLaw","LL2"=
+                               "LowerLaw","GP2" = "Goodman","ULck"="HorseCreek"))+
+  scale_y_continuous(name="Temperature (C)",limits=c(12.5, 22.5))
+dev.off()
+
+```
+
+#Winter boxplots
+```{r}
+#Format data long
+data_min_long <- gather(datamin, site, value, -day)
+data_winter <- data_min_long %>%filter(day>'2020-12-15'& day < '2021-02-15')
+
+png("Fig_Seiad_WinterBoxplot.png", width = 500, height = 400)
+ggplot(subset(data_winter, site %in% c("AP1","SP2","Durazo","LS","May","SPck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  theme_classic()+
+  theme(text=element_text(size=20))+
+  scale_x_discrete(name ="Site", 
+                   limits = c("AP1","SP2","Durazo","LS","May","SPck"),
+                    labels=c("AP1" = "Alexander","SP2"= "Stender","Durazo"=
+                               "Durazo","LS" = "LowerSeiad","May"="May","SPck" = "SeiadCreek"))+
+  scale_y_continuous(name="Temperature (C)", limits = c(4,12))
+dev.off()
+
+png("Fig_Horse_WinterBoxplot.png", width = 500, height = 400)
+ggplot(subset(data_winter, site %in% c("FG3","UL1","LL2","GP2","ULck")))+
+  geom_boxplot(aes(x = site, value, col = day))+
+  theme_classic()+
+  theme(text=element_text(size=20))+
+  scale_x_discrete(name ="Site", 
+                   limits = c("FG3","UL1","LL2","GP2","ULck"),
+                    labels=c("FG3" = "FishGulch","UL1"= "UpperLaw","LL2"=
+                               "LowerLaw","GP2" = "Goodman","ULck"="HorseCreek"))+
+  scale_y_continuous(name="Temperature (C)", limits = c(4,12))
 dev.off()
 
 ```

@@ -868,7 +868,7 @@ str(airtemp)
 saveRDS(airtemp,"airtemp.rds")
 ```
 
-##Dataframe
+##Dataframe Means
 ```{r}
 daily_means <- cbind(day = day, AP1 = AP1_daily$mean_temp, AP3 = AP3_daily$mean_temp, APck = APck_daily$mean_temp, SP1 = SP1_daily$mean_temp, SP2 = SP2_daily$mean_temp, SPck = SPck_daily$mean_temp, Durazo = Durazo_daily$mean_temp, LS = LS_daily$mean_temp, LSck = LSck_daily$mean_temp, May = May_daily$mean_temp, MayCk = MayCk_daily$mean_temp, FG2 = FG2_daily$mean_temp, FG3 = FG3_daily$mean_temp, FGck = FGck_daily$mean_temp, GP1 = GP1_daily$mean_temp, GP2 = GP2_daily$mean_temp, GP3 = GP3_daily$mean_temp, GPck = GPck_daily$mean_temp, ULout = ULout_daily$mean_temp, UL1 = UL1_daily$mean_temp, UL3 = UL3_daily$mean_temp, ULck = ULck_daily$mean_temp, LL1 = LL1_daily$mean_temp, LL2 = LL2_daily$mean_temp, LL3 = LL3_daily$mean_temp, airtemp = airtemp$TAVG)
 daily_means <- as.data.frame(daily_means)
@@ -884,6 +884,7 @@ saveRDS(covariate,"covariate.rds")
 
 ```
 
+#MaxTemps
 ```{r}
 daily_max <- cbind(day = day, AP1 = AP1_daily$max_temp, AP3 = AP3_daily$max_temp, APck = APck_daily$max_temp, SP1 = SP1_daily$max_temp, SP2 = SP2_daily$max_temp, SPck = SPck_daily$max_temp, Durazo = Durazo_daily$max_temp, LS = LS_daily$max_temp, LSck = LSck_daily$max_temp, May = May_daily$max_temp, MayCk = MayCk_daily$max_temp, FG2 = FG2_daily$max_temp, FG3 = FG3_daily$max_temp, FGck = FGck_daily$max_temp, GP1 = GP1_daily$max_temp, GP2 = GP2_daily$max_temp, GP3 = GP3_daily$max_temp, GPck = GPck_daily$max_temp, ULout = ULout_daily$max_temp, UL1 = UL1_daily$max_temp, UL3 = UL3_daily$max_temp, ULck = ULck_daily$max_temp, LL1 = LL1_daily$max_temp, LL2 = LL2_daily$max_temp, LL3 = LL3_daily$max_temp, airtemp = airtemp$TAVG)
 daily_max <- as.data.frame(daily_max)
@@ -891,6 +892,13 @@ daily_max_long <- t(daily_max[,-c(1,27)])
 saveRDS(daily_max_long,"daily_max_long.rds")
 ```
 
+##MinTemps
+```{r}
+daily_min <- cbind(day = day, AP1 = AP1_daily$min_temp, AP3 = AP3_daily$min_temp, APck = APck_daily$min_temp, SP1 = SP1_daily$min_temp, SP2 = SP2_daily$min_temp, SPck = SPck_daily$min_temp, Durazo = Durazo_daily$min_temp, LS = LS_daily$min_temp, LSck = LSck_daily$min_temp, May = May_daily$min_temp, MayCk = MayCk_daily$min_temp, FG2 = FG2_daily$min_temp, FG3 = FG3_daily$min_temp, FGck = FGck_daily$min_temp, GP1 = GP1_daily$min_temp, GP2 = GP2_daily$min_temp, GP3 = GP3_daily$min_temp, GPck = GPck_daily$min_temp, ULout = ULout_daily$min_temp, UL1 = UL1_daily$min_temp, UL3 = UL3_daily$min_temp, ULck = ULck_daily$min_temp, LL1 = LL1_daily$min_temp, LL2 = LL2_daily$min_temp, LL3 = LL3_daily$min_temp, airtemp = airtemp$TAVG)
+daily_min <- as.data.frame(daily_min)
+daily_min_long <- t(daily_min[,-c(1,27)])
+saveRDS(daily_min_long,"daily_min_long.rds")
+```
 
 ##Visualize trends
 ```{r}
@@ -955,5 +963,33 @@ dev.off()
 
 ```
 
+##MayPond
+```{r}
+data <- as.data.frame(t(daily_means_long))
+data <- cbind(data,day)
+data_long <- gather(data, site, value, -day)
+May_data <- subset(data_long, site %in%(c("May","MayCk")))
+                   
+May_summer <- May %>%filter(date>"2020-08-01"& date < "2020-08-21")
+  MayCk_summer <- MayCk%>%filter(date>"2020-08-01"& date < "2020-08-21")
+
+png("Fig_MayPond.png", width = 700, height = 400)
+ggplot()+
+  geom_line(data = May_summer, aes(x = date, y = Temp, color = "May Pond"))+
+  geom_line(data = MayCk_summer, aes(x = date, y = Temp, color = "Seiad Creek"))+
+  labs(x = "Date",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=20), legend.position = "bottom")+
+  scale_colour_manual("", values = c("May Pond"="steelblue", "Seiad Creek"="salmon")) +
+  scale_y_continuous("Temperature (C)") 
+dev.off()
+
+CV <- function(x){
+        (sd(x)/mean(x))*100
+}
+
+CV_diff <- CV(MayCk_summer$Temp)/CV(May_summer$Temp)
+```
 
 
