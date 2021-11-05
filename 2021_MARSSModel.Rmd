@@ -21,7 +21,6 @@ library(weathermetrics)
 ```{r}
 daily_means_long <- readRDS('daily_means_long.rds')
 covariate <- readRDS('covariate.rds')
-
 ```
 
 ##Data Matrix 
@@ -111,11 +110,11 @@ saveRDS(matrix5,"matrix5.rds")
 mod11 = list()
 mod11$A = "zero" #no trend because we z scored
 mod11$Z = matrix2
-mod11$R = "diagonal and equal" #all the sensors are the same type, so observation error should be the same
-mod11$Q = "diagonal and unequal" #(also try Equalvarcov)
+mod11$R = "diagonal and equal" #all the sensors are same, so observation error should be same
+mod11$Q = "diagonal and unequal" 
 mod11$B = "identity" #assuming no species interactions
 mod11$U = "zero" #no trend because we z scored 
-mod11$C = "unequal" #I think I can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod11$C = "unequal" #Can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
 mod11$c = matrixc
 mod11.fit = MARSS(transformed_dat, model=mod11, control=list(maxit=10000))
 mod11.params = MARSSparamCIs(mod11.fit)
