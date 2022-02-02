@@ -985,6 +985,17 @@ ggplot()+
   scale_y_continuous("Temperature (C)") 
 dev.off()
 
+png("Fig_MayPondSkinny.png", width = 500, height = 500)
+ggplot()+
+  geom_line(data = May_summer, aes(x = date, y = Temp, color = "May Pond"))+
+  geom_line(data = MayCk_summer, aes(x = date, y = Temp, color = "Seiad Creek"))+
+  labs(x = "Date",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=20), legend.position = "bottom")+
+  scale_colour_manual("", values = c("May Pond"="steelblue", "Seiad Creek"="salmon")) +
+  scale_y_continuous("Temperature (C)") 
+dev.off()
 CV <- function(x){
         (sd(x)/mean(x))*100
 }

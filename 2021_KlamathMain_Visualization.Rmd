@@ -1,0 +1,135 @@
+---
+title: "2021_KlamathMain_Visualization"
+output: html_document
+---
+
+
+```{r, include=F}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+library(astsa)
+library(forecast)
+library(dplyr)
+library(pander)
+library(MARSS)
+library(MASS)
+library(gridExtra)
+library(weathermetrics)
+library(ggplot2)
+library(zoo)
+library(imputeTS) 
+library(WaveletComp)
+library(magick)
+```
+
+
+#Read in Data
+```{r}
+##Reading in a 6 year 15 or 30 min temperature time series dataset from Klamath River at Seiad Valley called KSV(Klamath Seiad Valley). Data collected by Karuk Tribe
+KSV <- read.csv("SeiadValley_KlamathMain_AllData.csv")
+KSV$date <- lubridate::mdy_hm(KSV$Date_Time)#convert dates to POSIXct format 
+
+#Trim the dataset
+KSV <- KSV[c(2585:117486),] #Most missing data is between 2015-Feb 2016, so removing the first ~ year of data to make dataset less sketchy
+
+#Check for missing data
+missing_data <- KSV[!complete.cases(KSV),] 
+missing_data 
+#Need a complete dataset with no missing data. Since there is missing data in this dataset, we will need to interpolate
+
+#Bin data by hour and average temperature recordings to the hourly level
+KSV$hour <- lubridate::floor_date(KSV$date, unit="hour") #Before we interpolate, let's bin by hour
+KSV_hourly <- KSV %>% #Summarize recordings to the hourly level (we have a mix of 30 min and 15 min readings)
+  group_by(hour) %>% 
+  summarize(mean_temp=mean(Temp))
+
+head(KSV_hourly) #check the dataset start date, use for "hour" sequence
+tail(KSV_hourly) #check the dataset end date, use for "hour" sequence
+
+#Create hourly sequence to ensure all missing data is accounted for
+hour <- seq(mdy_h('5/2/2016 15'),mdy_h('2/1/2022 13'),by = "hour") #Create an object that goes hour by hour for the entire time series to ensure that ALL missing data is accounted for
+hour <- as.data.frame(hour) #convert "hour" to data frame
+KSV_hourly <- left_join(hour, KSV_hourly) #left join hour and dataset
+
+#Convert NaNs to NAs
+KSV_hourly$mean_temp[KSV_hourly$mean_temp == "NaN"] <- NA
+
+#Double check missing data
+missing_data <- KSV_hourly[!complete.cases(KSV_hourly),] 
+missing_data #Now we are sure that all the missing hour time steps are included.
+
+#z score to control for outliers
+KSV_hourly$zTemp <- zscore(KSV_hourly$mean_temp)
+
+#Convert to time series
+KSV_ts <- ts(KSV_hourly$zTemp, start = c(123, 15), frequency = 24) # This time series starts on 2 May 2016 at 2 am, so it starts on day 123 (leap year) at hour 15 and the frequency is 24 (24 hours per day)
+#^^^This is very confusing and I still don't fully understand how to convert data to time series so may want to ask Albert for clarification. 
+ts.plot(KSV_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
+```
+
+#Interpolate missing data
+```{r, cache = TRUE}
+#Run ARIMA to interpolate missing data
+y <- KSV_ts
+date_s <- KSV_hourly$hour
+y_na <- ifelse(is.na(y),0,NA)
+
+fit <- auto.arima(y,trace=TRUE) #fit limited number of models (faster)
+summary(fit) #Take a closer look at the best fitted model
+forecast_fit <- forecast(y,model=fit) #Predict values using the calibration dataset
+
+```
+
+#Plot interpolated data
+```{r}
+#Plot the observed and interpolated temperature regimes
+par(mar=c(2,4,1,1)) 
+plot(date_s,y,xlab="Time",ylab="Temp",lwd=2,type="l") 
+lines(date_s,forecast_fit$fitted,col="steelblue")
+
+#Plot predicted versus observed values
+scatter.smooth(y,forecast_fit$fitted,xlab="Observed",ylab="Predicted",pch=".",main = "Temperature")
+abline(0,1,lty=2)
+R2 = round(cor.test(y,forecast_fit$fitted,na.rm=T)$estimate^2,2)
+mtext(side=3,line=-2,adj=0.1,bquote(R^2 == .(R2)))
+```
+
+#Check residuals of interpolated data
+```{r}
+#Check residuals of the interpolation process
+checkresiduals(fit) #also gives the results for the Ljung_Box test with H0 = randomly distributed errors (white noise)
+
+#plot residuals versus fitted values (=check for heterosedasticity); if problems try to transform the data 
+par(mar=c(4,4,4,4))
+scatter.smooth(forecast_fit$fitted,forecast_fit$residuals,pch = ".",ylab="Residuals",xlab="Fitted values")
+```
+
+#Smooth interpolated data
+##NOTE: This chunk takes FOREVER beware
+```{r, cache = TRUE}
+#Interpolate missing values using a Kalman filter (=smoother)
+y_inter <- na_kalman(y,model=fit$model) #use the fitted model
+#Plot the results
+par(mar=c(2,4,1,1))
+plot(y_inter,xlab="",ylab="Temperature (C)",col="steelblue",main="Interpolation missing values")
+lines(y,col="black")
+
+#save  output as an rds
+saveRDS(y_inter, "y_inter_Alexander.rds")
+
+#read in your data 
+y_inter <- readRDS("y_inter_Alexander.rds")
+```
+
+#Format interpolated time series into a dataframe
+```{r}
+#Put the interpolated temperature dataset (y_inter) into a dataset with the correct dates (this does not work using the time series object because I had to designate hourly steps when making the time series, so the dates are messed up. There is probably a better way to do this...). 
+x <- as.data.frame(y_inter) #change y_inter from a ts to a dataframe
+x$ID <- seq.int(nrow(x)) #add a unique ID, check it is correct length
+date <- as.data.frame(APH$hour) #make the unique "hour" index from APH into a separate dataframe
+date$ID <- seq.int(nrow(date)) #give that a unique ID that aligns with x
+y_inter_df <- merge(x,date,"ID") #merge the two dataframes
+colnames(y_inter_df)<-c("ID","temp","date") #rename columns
+```
