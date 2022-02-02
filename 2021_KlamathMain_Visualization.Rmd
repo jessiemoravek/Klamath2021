@@ -77,9 +77,10 @@ date_s <- KSV_hourly$hour
 y_na <- ifelse(is.na(y),0,NA)
 
 fit <- auto.arima(y,trace=TRUE) #fit limited number of models (faster)
+saveRDS(fit,"KlamathSV_ARIMA_fit.rds")
 summary(fit) #Take a closer look at the best fitted model
 forecast_fit <- forecast(y,model=fit) #Predict values using the calibration dataset
-
+saveRDS(forecast_fit,"KlamathSV_ARIMA_forecast_fit.rds")
 ```
 
 #Plot interpolated data
