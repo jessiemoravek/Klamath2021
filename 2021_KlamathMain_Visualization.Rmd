@@ -25,7 +25,7 @@ library(magick)
 ```
 
 
-#Read in Data
+#Read in Data: Seiad Valley
 ```{r}
 ##Reading in a 6 year 15 or 30 min temperature time series dataset from Klamath River at Seiad Valley called KSV(Klamath Seiad Valley). Data collected by Karuk Tribe
 KSV <- read.csv("SeiadValley_KlamathMain_AllData.csv")
@@ -68,6 +68,117 @@ KSV_ts <- ts(KSV_hourly$zTemp, start = c(123, 15), frequency = 24) # This time s
 #^^^This is very confusing and I still don't fully understand how to convert data to time series so may want to ask Albert for clarification. 
 ts.plot(KSV_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
 ```
+#Read in Data: Orleans
+```{r}
+##Reading in a 6 year 15 or 30 min temperature time series dataset from Klamath River at Seiad Valley called KSV(Klamath Seiad Valley). Data collected by Karuk Tribe
+KO <- read.csv("Orleans_KlamathMain_AllData.csv")
+KO$date <- lubridate::mdy_hm(KO$Date_Time)#convert dates to POSIXct format 
+
+#Trim the dataset
+KO <- KO[c(4190:135357),] #Removing the first ~ year of data to align with Seiad Valley dataset
+
+#Check for missing data
+missing_data <- KO[!complete.cases(KO),] 
+missing_data 
+#Need a complete dataset with no missing data. Since there is missing data in this dataset, we will need to interpolate
+
+#Bin data by hour and average temperature recordings to the hourly level
+KO$hour <- lubridate::floor_date(KO$date, unit="hour") #Before we interpolate, let's bin by hour
+KO_hourly <- KO %>% #Summarize recordings to the hourly level (we have a mix of 30 min and 15 min readings)
+  group_by(hour) %>% 
+  summarize(mean_temp=mean(Temp))
+
+head(KO_hourly) #check the dataset start date, use for "hour" sequence
+tail(KO_hourly) #check the dataset end date, use for "hour" sequence
+
+#Create hourly sequence to ensure all missing data is accounted for
+hour <- seq(mdy_h('5/2/2016 15'),mdy_h('2/1/2022 13'),by = "hour") #Create an object that goes hour by hour for the entire time series to ensure that ALL missing data is accounted for
+hour <- as.data.frame(hour) #convert "hour" to data frame
+KO_hourly <- left_join(hour, KO_hourly) #left join hour and dataset
+
+#Convert NaNs to NAs
+KO_hourly$mean_temp[KO_hourly$mean_temp == "NaN"] <- NA
+
+#Double check missing data
+missing_data <- KO_hourly[!complete.cases(KO_hourly),] 
+missing_data #Now we are sure that all the missing hour time steps are included.
+
+#z score to control for outliers
+KO_hourly$zTemp <- zscore(KO_hourly$mean_temp)
+
+#Convert to time series
+KO_ts <- ts(KO_hourly$zTemp, start = c(123, 15), frequency = 24) # This time series starts on 2 May 2016 at 2 am, so it starts on day 123 (leap year) at hour 15 and the frequency is 24 (24 hours per day)
+#^^^This is very confusing and I still don't fully understand how to convert data to time series so may want to ask Albert for clarification. 
+ts.plot(KO_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
+```
+#Compare Orleans and Seiad Valley datasets
+```{r}
+png("Fig_Klamath_OrleansVsSeiadCk.png", width = 1000, height = 1000)
+plot(KSV_hourly$mean_temp,KO_hourly$mean_temp,abline(a=0, b=1, col="red"),pch = ".")
+dev.off()
+
+```
+#MARSS Model
+##Format data
+```{r}
+#KSV (Seiad Valley)
+#Bin by day
+KSV_hourly$day <-lubridate::floor_date(KSV_hourly$hour, unit="day") 
+head(KSV_hourly)
+tail(KSV_hourly)
+
+#Group by day and calculate mean
+KSV_daily <- KSV_hourly %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(mean_temp))
+
+#KO (Orleans)
+#Bin by day
+KO_hourly$day <-lubridate::floor_date(KO_hourly$hour, unit="day") 
+head(KO_hourly)
+tail(KO_hourly)
+
+#Group by day and calculate mean
+KO_daily <- KO_hourly %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(mean_temp))
+
+#Make a data frame
+daily_means <- cbind(day = KSV$day, KSV = KSV_daily$mean_temp, KO = KO_daily$mean_temp)
+daily_means <- as.data.frame(daily_means)
+
+daily_means_long <- t(daily_means[,-c(1,2)]) #Take the daily means and put them into a dataframe formatted for MARSS (not a matrix yet)
+dim(daily_means_long) #check we did that right
+covariate <- t(daily_means[,c(2)]) #Do the same for the covariates
+
+```
+##Data Matrix 
+```{r, include = F}
+#Convert data to matrix and z-score
+transformed_dat <- as.matrix(daily_means_long)
+transformed_dat <- zscore(transformed_dat)
+
+```
+
+##Covariates
+```{r, include=FALSE}
+#Build the little c matrix, call it matrixc
+dim(covariate)
+matrixc <- matrix(nrow=1,ncol=2102)
+matrixc <- (as.matrix(covariate))
+```
+
+###Check data and covariates
+```{r, include = F}
+matplot(t(transformed_dat))
+matplot(t(matrixc))
+
+```
+##Z Matrices
+```{r}
+
+```
+
 
 #Interpolate missing data
 ```{r, cache = TRUE}
@@ -112,16 +223,13 @@ scatter.smooth(forecast_fit$fitted,forecast_fit$residuals,pch = ".",ylab="Residu
 ```{r, cache = TRUE}
 #Interpolate missing values using a Kalman filter (=smoother)
 y_inter <- na_kalman(y,model=fit$model) #use the fitted model
+saveRDS(y_inter,"KlamathSV_ARIMA_y_inter.rds")
+
 #Plot the results
 par(mar=c(2,4,1,1))
 plot(y_inter,xlab="",ylab="Temperature (C)",col="steelblue",main="Interpolation missing values")
 lines(y,col="black")
 
-#save  output as an rds
-saveRDS(y_inter, "y_inter_Alexander.rds")
-
-#read in your data 
-y_inter <- readRDS("y_inter_Alexander.rds")
 ```
 
 #Format interpolated time series into a dataframe
