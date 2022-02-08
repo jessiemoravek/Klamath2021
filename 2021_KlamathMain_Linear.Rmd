@@ -1,8 +1,7 @@
 ---
-title: "2021_KlamathMain_Visualization"
+title: "2021_KlamathMain_Linear"
 output: html_document
 ---
-
 
 ```{r, include=F}
 knitr::opts_chunk$set(echo = TRUE)
@@ -111,112 +110,87 @@ KO_ts <- ts(KO_hourly$zTemp, start = c(123, 15), frequency = 24) # This time ser
 #^^^This is very confusing and I still don't fully understand how to convert data to time series so may want to ask Albert for clarification. 
 ts.plot(KO_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
 ```
+
+
 #Compare Orleans and Seiad Valley datasets
 ```{r}
-png("Fig_Klamath_OrleansVsSeiadCk.png", width = 1000, height = 1000)
 plot(KSV_hourly$mean_temp,KO_hourly$mean_temp,abline(a=0, b=1, col="red"),pch = ".")
-dev.off()
 
+#Tightly correlated-- 0.99
+cor(KSV_hourly$mean_temp, KO_hourly$mean_temp, use = "na.or.complete", method = "pearson")
+
+
+ggplot()+
+  geom_line(data = KSV_hourly, aes(x = hour, y = mean_temp, color = "SeiadValley"))+
+  geom_line(data = KO_hourly, aes(x = hour, y = mean_temp, color = "Orleans"))+
+  labs(x = "Year",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=12), legend.position = "bottom")+
+  scale_colour_manual("", values = c("SeiadValley"="steelblue", "Orleans"="salmon")) +
+  scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30) 
 ```
-#MARSS Model
-##Format data
+
+
+#Trim Overlapping part of datasets
 ```{r}
-#KSV (Seiad Valley)
-#Bin by day
-KSV_hourly$day <-lubridate::floor_date(KSV_hourly$hour, unit="day") 
-head(KSV_hourly)
-tail(KSV_hourly)
+#Start overlap: 2018-12-12 10:00:00 (from KO dataset, 22892)
+#End overlap: 2020-05-08 10:00:00 (from KSV dataset, 35515)
 
-#Group by day and calculate mean
-KSV_daily <- KSV_hourly %>% 
-  group_by(day) %>% 
-  summarize(mean_temp=mean(mean_temp))
+KO_hourly_cut <- KO_hourly[c(22892:35516),]
+KSV_hourly_cut <- KSV_hourly[c(22892:35516),] 
 
-#KO (Orleans)
-#Bin by day
-KO_hourly$day <-lubridate::floor_date(KO_hourly$hour, unit="day") 
-head(KO_hourly)
-tail(KO_hourly)
-
-#Group by day and calculate mean
-KO_daily <- KO_hourly %>% 
-  group_by(day) %>% 
-  summarize(mean_temp=mean(mean_temp))
-
-#Make a data frame
-daily_means <- cbind(day = KSV$day, KSV = KSV_daily$mean_temp, KO = KO_daily$mean_temp)
-daily_means <- as.data.frame(daily_means)
-
-daily_means_long <- t(daily_means[,-c(1,2)]) #Take the daily means and put them into a dataframe formatted for MARSS (not a matrix yet)
-dim(daily_means_long) #check we did that right
-covariate <- t(daily_means[,c(2)]) #Do the same for the covariates
+ggplot()+
+  geom_line(data = KSV_hourly_cut, aes(x = hour, y = mean_temp, color = "SeiadValley"))+
+  geom_line(data = KO_hourly_cut, aes(x = hour, y = mean_temp, color = "Orleans"))+
+  labs(x = "Year",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=12), legend.position = "bottom")+
+  scale_colour_manual("", values = c("SeiadValley"="steelblue", "Orleans"="salmon")) +
+  scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30)
 
 ```
-
-
-#Interpolate missing data
-```{r, cache = TRUE}
-#Run ARIMA to interpolate missing data
-y <- KSV_ts
-date_s <- KSV_hourly$hour
-y_na <- ifelse(is.na(y),0,NA)
-
-fit <- auto.arima(y,trace=TRUE) #fit limited number of models (faster)
-saveRDS(fit,"KlamathSV_ARIMA_fit.rds")
-summary(fit) #Take a closer look at the best fitted model
-forecast_fit <- forecast(y,model=fit) #Predict values using the calibration dataset
-saveRDS(forecast_fit,"KlamathSV_ARIMA_forecast_fit.rds")
-
-fit <- readRDS("KlamathSV_ARIMA_fit.rds")
-forecast_fit <- readRDS("KlamathSV_ARIMA_forecast_fit.rds")
-```
-
-#Plot interpolated data
+#Check correlation between overlapping data points
 ```{r}
-#Plot the observed and interpolated temperature regimes
-par(mar=c(2,4,1,1)) 
-plot(date_s,y,xlab="Time",ylab="Temp",lwd=2,type="l") 
-lines(date_s,forecast_fit$fitted,col="steelblue")
-
-#Plot predicted versus observed values
-scatter.smooth(y,forecast_fit$fitted,xlab="Observed",ylab="Predicted",pch=".",main = "Temperature")
-abline(0,1,lty=2)
-R2 = round(cor.test(y,forecast_fit$fitted,na.rm=T)$estimate^2,2)
-mtext(side=3,line=-2,adj=0.1,bquote(R^2 == .(R2)))
+cor(KSV_hourly_cut$mean_temp, KO_hourly_cut$mean_temp, use = "na.or.complete", method = "pearson")
+#correlation coefficient is 0.9921006
 ```
-
-#Check residuals of interpolated data
+#Create a linear model
 ```{r}
-#Check residuals of the interpolation process
-checkresiduals(fit) #also gives the results for the Ljung_Box test with H0 = randomly distributed errors (white noise)
+#convert dataset to time series to ensure equal steps
+KSV_cut_ts <- ts(KSV_hourly_cut$mean_temp, start = c(346, 10), frequency = 24)
+KO_cut_ts <- ts(KO_hourly_cut$mean_temp, start = c(346, 10), frequency = 24)
 
-#plot residuals versus fitted values (=check for heterosedasticity); if problems try to transform the data 
-par(mar=c(4,4,4,4))
-scatter.smooth(forecast_fit$fitted,forecast_fit$residuals,pch = ".",ylab="Residuals",xlab="Fitted values")
-```
-
-#Smooth interpolated data
-##NOTE: This chunk takes FOREVER beware
-```{r, cache = TRUE}
-#Interpolate missing values using a Kalman filter (=smoother)
-y_inter <- na_kalman(y,model=fit$model) #use the fitted model
-saveRDS(y_inter,"KlamathSV_ARIMA_y_inter.rds")
-y_inter <- readRDS("KlamathSV_ARIMA_y_inter.rds")
-
-#Plot the results
-par(mar=c(2,4,1,1))
-plot(y_inter,xlab="",ylab="Temperature (C)",col="steelblue",main="Interpolation missing values")
-lines(y,col="black")
+fit_lm <- lm(KSV_cut_ts~KO_cut_ts, na.action=na.exclude)  # fit with na.exclude
+fit_lm#So the equation y = mx+b is... KSV = 1.0617(KO) - 0.7997
 
 ```
-
-#Format interpolated time series into a dataframe
+#Cut missing KSV values
 ```{r}
-#Put the interpolated temperature dataset (y_inter) into a dataset with the correct dates (this does not work using the time series object because I had to designate hourly steps when making the time series, so the dates are messed up. There is probably a better way to do this...). 
-x <- as.data.frame(y_inter) #change y_inter from a ts to a dataframe
-x$ID <- seq.int(nrow(x)) #add a unique ID, check it is correct length
-date <- as.data.frame(APH$hour) #make the unique "hour" index from APH into a separate dataframe
-date$ID <- seq.int(nrow(date)) #give that a unique ID that aligns with x
-y_inter_df <- merge(x,date,"ID") #merge the two dataframes
-colnames(y_inter_df)<-c("ID","temp","date") #rename columns
+#Start at 35515, end at 36959
+KSV_hourly_missing<- KSV_hourly[c(35516:36958),]
+KSV_missing_ts <- ts(KSV_hourly_missing$mean_temp, start = c(141, 10), frequency = 24)
+str(KSV_missing_ts)
+
+KSV_predict <- predict(fit_lm, newdata = KSV_missing_ts)
+KSV_predict <- as.data.frame(KSV_predict)
+KSV_predict$fit
+str(KSV_predict)
+KSV_hourly_missing$mean_temp <- KSV_predict$fit
 ```
+#Plot missing KSV values
+```{r}
+ggplot()+
+  geom_line(data = KSV_hourly, aes(x = hour, y = mean_temp, color = "SeiadValley"))+
+  geom_line(data = KSV_predict, aes(x = , y = fit, color = "Orleans"))+
+  labs(x = "Year",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=12), legend.position = "bottom")+
+  scale_colour_manual("", values = c("SeiadValley"="steelblue", "Orleans"="salmon")) +
+  scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30)
+
+```
+
+
