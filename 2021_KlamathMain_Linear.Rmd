@@ -1,10 +1,13 @@
 ---
 title: "2021_KlamathMain_Linear"
-output: html_document
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r, include=F}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE,echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(patchwork)
@@ -25,7 +28,7 @@ library(magick)
 
 
 #Read in Data: Seiad Valley
-```{r}
+```{r echo = T, results = "hide", messages = F}
 ##Reading in a 6 year 15 or 30 min temperature time series dataset from Klamath River at Seiad Valley called KSV(Klamath Seiad Valley). Data collected by Karuk Tribe
 KSV <- read.csv("SeiadValley_KlamathMain_AllData.csv")
 KSV$date <- lubridate::mdy_hm(KSV$Date_Time)#convert dates to POSIXct format 
@@ -68,7 +71,7 @@ KSV_ts <- ts(KSV_hourly$zTemp, start = c(123, 15), frequency = 24) # This time s
 ts.plot(KSV_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
 ```
 #Read in Data: Orleans
-```{r}
+```{r echo = T, results = "hide", messages = F}
 ##Reading in a 6 year 15 or 30 min temperature time series dataset from Klamath River at Seiad Valley called KSV(Klamath Seiad Valley). Data collected by Karuk Tribe
 KO <- read.csv("Orleans_KlamathMain_AllData.csv")
 KO$date <- lubridate::mdy_hm(KO$Date_Time)#convert dates to POSIXct format 
@@ -114,12 +117,10 @@ ts.plot(KO_ts,main="Temperature",ylab = "Temperature (C)", xlab = "Time")
 
 #Compare Orleans and Seiad Valley datasets
 ```{r}
-plot(KSV_hourly$mean_temp,KO_hourly$mean_temp,abline(a=0, b=1, col="red"),pch = ".")
-
 #Tightly correlated-- 0.99
 cor(KSV_hourly$mean_temp, KO_hourly$mean_temp, use = "na.or.complete", method = "pearson")
 
-
+#plot 
 ggplot()+
   geom_line(data = KSV_hourly, aes(x = hour, y = mean_temp, color = "SeiadValley"))+
   geom_line(data = KO_hourly, aes(x = hour, y = mean_temp, color = "Orleans"))+
@@ -133,7 +134,7 @@ ggplot()+
 
 
 #Trim Overlapping part of datasets
-```{r}
+```{r warning = F}
 #Start overlap: 2018-12-12 10:00:00 (from KO dataset, 22892)
 #End overlap: 2020-05-08 10:00:00 (from KSV dataset, 35515)
 
@@ -166,31 +167,58 @@ fit_lm <- lm(KSV_cut_ts~KO_cut_ts, na.action=na.exclude)  # fit with na.exclude
 fit_lm#So the equation y = mx+b is... KSV = 1.0617(KO) - 0.7997
 
 ```
-#Cut missing KSV values
-```{r}
-#Start at 35515, end at 36959
-KSV_hourly_missing<- KSV_hourly[c(35516:36958),]
-KSV_missing_ts <- ts(KSV_hourly_missing$mean_temp, start = c(141, 10), frequency = 24)
-str(KSV_missing_ts)
+#Predict missing KSV values
+```{r echo = T}
+#Let's chop off everything prior to June 1 2020 bc we don't care about that, and chop off everything after 1 October 2021 bc we also don't care about that
+KSV_hourly_2020 <- KSV_hourly[c(35770:47457),]
+KO_hourly_2020 <- KO_hourly[c(35770:47457),]
+KO_hourly_2020_ts <- ts(KO_hourly_2020$mean_temp, start = c(152, 0), frequency = 24)#need it in ts format for predict function
 
-KSV_predict <- predict(fit_lm, newdata = KSV_missing_ts)
+#Need to name the "newdata" variable that we are plugging into the predict function the SAME NAME as the variable we used in the fit_lm linear equation above. Not sure why but this works. 
+KO_cut_ts <- KO_hourly_2020_ts
+
+#Run the predict model, newdata being the values of KO that align with the missing values of KSV, but named same as linear model
+KSV_predict <- predict(fit_lm, newdata = KO_cut_ts, )
 KSV_predict <- as.data.frame(KSV_predict)
-KSV_predict$fit
-str(KSV_predict)
-KSV_hourly_missing$mean_temp <- KSV_predict$fit
+str(KO_hourly_2020)#checking # of results
+
+#left join the datasets
+KSV_KO_2020 <- left_join(KO_hourly_2020,KSV_hourly_2020,by="hour")
+#Add the values from predict model to the joined dataset
+KSV_KO_2020 <- cbind(KSV_KO_2020,KSV_predict$KSV_predict)
+
+#Plug in the predicted values to the missing KSV temps
+KSV_KO_2020$mean_temp.y <- ifelse(is.na(KSV_KO_2020$mean_temp.y), KSV_KO_2020$KSV_predict, KSV_KO_2020$mean_temp.y)
+
+#Make a separate predicted vector for plotting purposes
+KSV_KO_2020$predicted <- (ifelse(is.na(KSV_KO_2020$zTemp.y), KSV_KO_2020$KSV_predict, NA))#We already plugged in missing mean_temps for KSV, so use the zTemp variable which is still empty for predicted values. This is just for graphing. 
+
 ```
 #Plot missing KSV values
 ```{r}
 ggplot()+
-  geom_line(data = KSV_hourly, aes(x = hour, y = mean_temp, color = "SeiadValley"))+
-  geom_line(data = KSV_predict, aes(x = , y = fit, color = "Orleans"))+
+  geom_line(data = KSV_KO_2020, aes(x = hour, y = mean_temp.y, color = "ExistingData"))+
+  geom_line(data = KSV_KO_2020, aes(x = hour, y = predicted, color = "PredictedData"))+
   labs(x = "Year",
        y = "Temperature (C)")+
   theme_classic()+
   theme(text=element_text(size=12), legend.position = "bottom")+
-  scale_colour_manual("", values = c("SeiadValley"="steelblue", "Orleans"="salmon")) +
+  scale_colour_manual("", values = c("ExistingData"="steelblue", "PredictedData"="gold")) +
   scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30)
 
 ```
 
+#Plot predicted values with Orleans data
+```{r}
+ggplot()+
+  geom_line(data = KSV_KO_2020, aes(x = hour, y = mean_temp.y, color = "ExistingData"))+
+  geom_line(data = KSV_KO_2020, aes(x = hour, y = predicted, color = "PredictedData"))+
+  geom_line(data = KSV_KO_2020, aes(x = hour, y = mean_temp.x, color = "OrleansData"))+
+  labs(x = "Year",
+       y = "Temperature (C)")+
+  theme_classic()+
+  theme(text=element_text(size=12), legend.position = "bottom")+
+  scale_colour_manual("", values = c("ExistingData"="steelblue", "PredictedData"="gold","OrleansData"="salmon")) +
+  scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30)
 
+```
