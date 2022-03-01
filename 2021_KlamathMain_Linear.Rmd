@@ -190,6 +190,7 @@ KSV_KO_2020 <- cbind(KSV_KO_2020,KSV_predict$KSV_predict)
 #Plug in the predicted values to the missing KSV temps
 KSV_KO_2020$mean_temp.y <- ifelse(is.na(KSV_KO_2020$mean_temp.y), KSV_KO_2020$KSV_predict, KSV_KO_2020$mean_temp.y)
 
+
 #Make a separate predicted vector for plotting purposes
 KSV_KO_2020$predicted <- (ifelse(is.na(KSV_KO_2020$zTemp.y), KSV_KO_2020$KSV_predict, NA))#We already plugged in missing mean_temps for KSV, so use the zTemp variable which is still empty for predicted values. This is just for graphing. 
 
@@ -222,3 +223,24 @@ ggplot()+
   scale_y_continuous("Temperature (C)", limits = c(0,30), breaks = 5*0:30)
 
 ```
+#Bin KSV data by day and cut to timeframe of interest
+```{r}
+#Position dataset into a full year data frame by daily steps
+KSV_KO_2020$day <- lubridate::floor_date(KSV_KO_2020$hour, unit="day") #Bin by day
+head(KSV_KO_2020, n=70) #check the dataset start date
+tail(KSV_KO_2020) #check the dataset end date
+day <- seq(mdy('7/1/2020'),mdy('7/13/2021'),by = "day") #Create an object that goes day by day for whole series
+day <- as.data.frame(day) #convert "day" to data frame
+str(day) #check that it's a data frame
+KSV_KO_2020 <- left_join(day, KSV_KO_2020) #join day and dataset
+str(KSV_KO_2020)
+
+#Group by day and calculate mean, max, min, amp
+KSV_daily <- KSV_KO_2020 %>% 
+  group_by(day) %>% 
+  summarize(mean_temp=mean(mean_temp.y),max_temp=max(mean_temp.y), min_temp=min(mean_temp.y), amp_temp=(max(mean_temp.y)-min(mean_temp.y)))
+str(KSV_daily)
+
+saveRDS(KSV_daily$mean_temp,'KSV_meantemps.rds')
+```
+
