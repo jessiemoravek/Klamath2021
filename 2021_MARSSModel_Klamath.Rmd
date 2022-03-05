@@ -39,7 +39,11 @@ str(daily_means_long_klamath)
 
 ##Data Matrix 
 ```{r echo = T, results = "hide", messages = F}
-#Convert data to matrix and z-score
+#Convert data to matrix 
+daily_means_long_klamath <- as.matrix(daily_means_long_klamath)
+saveRDS(daily_means_long_klamath,"daily_means_long_klamath.rds")
+
+#z score
 transformed_dat_klamath <- as.matrix(daily_means_long_klamath)
 transformed_dat_klamath <- zscore(transformed_dat_klamath)
 saveRDS(transformed_dat_klamath,"transformed_dat_klamath.rds")
@@ -139,6 +143,31 @@ saveRDS(matrix5_klamath,"matrix5_klamath.rds")
 ```
 
 ##MARSS models
+###Create a FT for seasonality and combine with AirTemp
+```{r}
+#Correct for seasonality using Fourier Series
+TT = ncol(transformed_dat_klamath) # number of time periods/samples
+period = 365 # number of "seasons" (e.g., 12 months per year)
+per.1st = 182 # first "season" (e.g., Jan = 1, July = 7)
+c = diag(period) # create factors for seasons
+for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
+dim(c)
+
+#Create Fourier Series
+cos.t = cos(2 * pi * seq(TT) / period)
+sin.t = sin(2 * pi * seq(TT) / period)
+c.Four = rbind(cos.t,sin.t)
+cor(c.Four[1,],c.Four[2,]) # not correlated!
+matplot(t(c.Four), type="l")
+
+#Now fit model with seasonality AND an additional covariate (airtemp from above)
+matrixc_klamath_z <- zscore(matrixc_klamath)
+newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=matrixc_klamath_z)
+matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
+```
+
+####Things I tried: 1) zscore data + covar; 2) no zscore; 3) zscore covar; 4) zscore data; 5) no covar at all; 6) zscore covar + FT; 6) just FT
+
 ###model 1
 ```{r}
 #Hypothesis 1, Model 1: all separate
@@ -155,14 +184,42 @@ mod11_klamath.fit = MARSS(transformed_dat_klamath, model=mod11_klamath, control=
 mod11_klamath.params = MARSSparamCIs(mod11_klamath.fit)
 saveRDS(mod11_klamath.fit,"mod11_klamath.fit.rds")
 saveRDS(mod11_klamath.params,"mod11_klamath.params.rds")
+```
 
-par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tt1")$model.residuals[j, ],
+####Messing with Residuals
+```{r}
+mod11_klamath.fit <- readRDS("mod11_klamath.fit.rds")
+mod11_klamath.params <- readRDS("mod11_klamath.params.rds")
+
+#model.residuals = the model residuals (data minus model predicted values) as a n x T matrix
+
+#tT: smoothed residuals conditioned on all the data t=1 to T, aka smoothation residuals *Smoothed residuals are autocorrelated so an ACF test would not reveal model inadequacy
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tT")$model.residuals[j, ],
             ylab = "Residual")
     abline(h = 0, lty = "dashed")
     acf(residuals,na.action = na.pass)
-  }
+}
+
+#tt1: one-step-ahead residuals, aka innovations residuals
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+}
+
+#tt: contemporaneous residuals, only for the observations
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tt")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+}
+
 ```
 
 ###model 2
@@ -170,14 +227,15 @@ par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
 #Hypothesis 2, Model 3: ponds vs. creeks 
 mod12_klamath <- mod11_klamath 
 mod12_klamath$Z <- matrix3_klamath
+mod12_klamath$c <- matrixc_klamath
 mod12_klamath.fit = MARSS(transformed_dat_klamath, model=mod12_klamath, control=list(maxit=10000))
 mod12_klamath.params = MARSSparamCIs(mod12_klamath.fit)
 saveRDS(mod12_klamath.fit,"mod12_klamath.fit.rds")
 saveRDS(mod12_klamath.params,"mod12_klamath.params.rds")
 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
-  for (j in 1:5) {
-    plot.ts(residuals<-MARSSresiduals(mod12_klamath.fit, type = "tt1")$model.residuals[j, ],
+  for (j in 1:8) {
+    plot.ts(residuals<-MARSSresiduals(mod12_klamath.fit, type = "tt")$model.residuals[j, ],
             ylab = "Residual")
     abline(h = 0, lty = "dashed")
     acf(residuals,na.action = na.pass)
