@@ -24,7 +24,6 @@ library(gridExtra)
 library(weathermetrics)
 ```
 
-
 ##Read in data
 ```{r echo = T, results = "hide", messages = F}
 KSV_meantemps <- readRDS('KSV_meantemps.rds')
