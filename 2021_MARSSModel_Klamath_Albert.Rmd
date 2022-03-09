@@ -40,12 +40,12 @@ str(daily_means_long_klamath)
 ```{r echo = T, results = "hide", messages = F}
 #Convert data to matrix 
 daily_means_long_klamath <- as.matrix(daily_means_long_klamath)
-saveRDS(daily_means_long_klamath,"daily_means_long_klamath.rds")
+#saveRDS(daily_means_long_klamath,"daily_means_long_klamath.rds")
 
 #z score
 transformed_dat_klamath <- as.matrix(daily_means_long_klamath)
 transformed_dat_klamath <- zscore(transformed_dat_klamath)
-saveRDS(transformed_dat_klamath,"transformed_dat_klamath.rds")
+#saveRDS(transformed_dat_klamath,"transformed_dat_klamath.rds")
 
 ```
 
@@ -54,7 +54,7 @@ saveRDS(transformed_dat_klamath,"transformed_dat_klamath.rds")
 #Build the little c matrix, call it matrixc
 matrixc_klamath <- matrix(nrow=1,ncol=378)
 matrixc_klamath <- (as.matrix(covariate_klamath))
-saveRDS(matrixc_klamath,"matrixc_klamath.rds")
+#saveRDS(matrixc_klamath,"matrixc_klamath.rds")
 
 ```
 
@@ -135,10 +135,10 @@ matrix5_klamath <-  matrix(nrow=26, ncol=1)
 matrix5_klamath[,] <- 1
 matrix5_klamath
 
-saveRDS(matrix2_klamath,"matrix2_klamath.rds")
-saveRDS(matrix3_klamath,"matrix3_klamath.rds")
-saveRDS(matrix4_klamath,"matrix4_klamath.rds")
-saveRDS(matrix5_klamath,"matrix5_klamath.rds")
+#saveRDS(matrix2_klamath,"matrix2_klamath.rds")
+#saveRDS(matrix3_klamath,"matrix3_klamath.rds")
+#saveRDS(matrix4_klamath,"matrix4_klamath.rds")
+#saveRDS(matrix5_klamath,"matrix5_klamath.rds")
 ```
 
 ##MARSS models
@@ -181,8 +181,8 @@ mod11_klamath$C = "unequal" #Can set C to unequal because it is going off the Z 
 mod11_klamath$c = matrixc_klamath
 mod11_klamath.fit = MARSS(transformed_dat_klamath, model=mod11_klamath, control=list(maxit=10000))
 mod11_klamath.params = MARSSparamCIs(mod11_klamath.fit)
-saveRDS(mod11_klamath.fit,"mod11_klamath.fit.rds")
-saveRDS(mod11_klamath.params,"mod11_klamath.params.rds")
+#saveRDS(mod11_klamath.fit,"mod11_klamath.fit.rds")
+#saveRDS(mod11_klamath.params,"mod11_klamath.params.rds")
 ```
 
 ####Messing with Residuals
@@ -229,8 +229,8 @@ mod12_klamath$Z <- matrix3_klamath
 mod12_klamath$c <- matrixc_klamath
 mod12_klamath.fit = MARSS(transformed_dat_klamath, model=mod12_klamath, control=list(maxit=10000))
 mod12_klamath.params = MARSSparamCIs(mod12_klamath.fit)
-saveRDS(mod12_klamath.fit,"mod12_klamath.fit.rds")
-saveRDS(mod12_klamath.params,"mod12_klamath.params.rds")
+#saveRDS(mod12_klamath.fit,"mod12_klamath.fit.rds")
+#saveRDS(mod12_klamath.params,"mod12_klamath.params.rds")
 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
   for (j in 1:8) {
@@ -248,8 +248,8 @@ mod13_klamath <- mod11_klamath
 mod13_klamath$Z = matrix4_klamath
 mod13_klamath.fit = MARSS(transformed_dat_klamath, model=mod13_klamath, control=list(maxit=10000))
 mod13_klamath.params = MARSSparamCIs(mod13_klamath.fit)
-saveRDS(mod13_klamath.fit,"mod13_klamath.fit.rds")
-saveRDS(mod13_klamath.params,"mod13_klamath.params.rds")
+#saveRDS(mod13_klamath.fit,"mod13_klamath.fit.rds")
+#saveRDS(mod13_klamath.params,"mod13_klamath.params.rds")
 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
   for (j in 1:5) {
@@ -267,8 +267,8 @@ mod14_klamath <- mod11_klamath
 mod14_klamath$Z <- matrix5_klamath
 mod14_klamath.fit = MARSS(transformed_dat_klamath, model=mod14_klamath, control=list(maxit=10000))
 mod14_klamath.params =MARSSparamCIs(mod14_klamath.fit)
-saveRDS(mod14_klamath.fit,"mod14_klamath.fit.rds")
-saveRDS(mod14_klamath.params,"mod14_klamath.params.rds")
+#saveRDS(mod14_klamath.fit,"mod14_klamath.fit.rds")
+#saveRDS(mod14_klamath.params,"mod14_klamath.params.rds")
 
 par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
   for (j in 1:5) {
