@@ -1,0 +1,290 @@
+---
+title: "2021_MARSSModel_Klamath"
+output:
+  word_document: default
+  html_document: default
+---
+
+---
+title: "2021_MARSSModel"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(patchwork)
+library(astsa)
+library(forecast)
+library(dplyr)
+library(pander)
+library(MARSS)
+library(MASS)
+library(gridExtra)
+library(weathermetrics)
+```
+
+##Read in data
+```{r echo = T, results = "hide", messages = F}
+KSV_meantemps <- readRDS('KSV_meantemps.rds')
+daily_means_long_klamath <- readRDS('daily_means_long.rds')
+covariate_klamath <- readRDS('covariate.rds')
+
+daily_means_long_klamath <-rbind(daily_means_long_klamath, KSV = KSV_meantemps)
+str(daily_means_long_klamath)
+
+```
+
+
+##Data Matrix 
+```{r echo = T, results = "hide", messages = F}
+#Convert data to matrix 
+daily_means_long_klamath <- as.matrix(daily_means_long_klamath)
+saveRDS(daily_means_long_klamath,"daily_means_long_klamath.rds")
+
+#z score
+transformed_dat_klamath <- as.matrix(daily_means_long_klamath)
+transformed_dat_klamath <- zscore(transformed_dat_klamath)
+saveRDS(transformed_dat_klamath,"transformed_dat_klamath.rds")
+
+```
+
+##Covariates
+```{r echo = T, results = "hide", messages = F}
+#Build the little c matrix, call it matrixc
+matrixc_klamath <- matrix(nrow=1,ncol=378)
+matrixc_klamath <- (as.matrix(covariate_klamath))
+saveRDS(matrixc_klamath,"matrixc_klamath.rds")
+
+```
+
+###Check data and covariates
+```{r}
+matplot(t(transformed_dat_klamath))
+matplot(t(matrixc_klamath))
+
+#looks okay, we removed AP2 in the visualization .rmd file
+```
+
+##Z-Matrices
+###matrix2_klamath
+```{r echo = T}
+#Hypothesis 1: All ponds and creeks and mainstem are separate
+matrix2_klamath <- matrix(nrow=26,ncol=12)
+matrix2_klamath[c(1:2),1] <- 1 #Alexander
+matrix2_klamath[c(1:2),c(2:12)] <- 0
+matrix2_klamath[c(4:5),2] <- 1 #Stender
+matrix2_klamath[c(4:5),c(1,3:12)] <- 0 
+matrix2_klamath[c(3,6,9,11,12),3] <- 1 #Seiad Creek
+matrix2_klamath[c(3,6,9,11,12),c(1,2,4:12)] <- 0
+matrix2_klamath[7,4] <- 1 #Durazo
+matrix2_klamath[7,c(1:3,5:12)] <- 0
+matrix2_klamath[8,5] <- 1 #Lower Seiad
+matrix2_klamath[8,c(1:4,6:12)] <- 0
+matrix2_klamath[10,6] <- 1 #May
+matrix2_klamath[10,c(1:5,7:12)] <- 0
+matrix2_klamath[c(12:13),7] <- 1 #Fish Gulch
+matrix2_klamath[c(12:13),c(1:6,8:12)] <- 0
+matrix2_klamath[c(15:17),8] <- 1 #Goodman
+matrix2_klamath[c(15:17),c(1:7,9:12)] <- 0
+matrix2_klamath[c(19:21),9] <- 1 #Upper Lawrence
+matrix2_klamath[c(19:21),c(1:8,10:12)] <- 0
+matrix2_klamath[c(23:25),10] <- 1 #Lower Lawrence
+matrix2_klamath[c(23:25),c(1:9,11:12)] <- 0
+matrix2_klamath[c(14,18,22),11] <- 1 #Horse Creek
+matrix2_klamath[c(14,18,22),c(1:10,12)] <- 0
+matrix2_klamath[26,12] <- 1 #Klamath
+matrix2_klamath[26,c(1:11)] <- 0
+matrix2_klamath
+```
+
+###matrix3_klamath
+```{r echo = T}
+#Hypothesis 2: ponds versus creeks versus Klamath
+matrix3_klamath <- matrix(nrow=26, ncol=3)
+matrix3_klamath[c(1:2,4:5,7:8,10,12:13,15:17,19:21,23:25),1] <- 1 #All ponds
+matrix3_klamath[c(1:2,4:5,7:8,10,12:13,15:17,19:21,23:25),c(2:3)] <- 0
+matrix3_klamath[c(3,6,9,11,14,18,22),c(1,3)] <- 0 #All creeks
+matrix3_klamath[c(3,6,9,11,14,18,22),2] <- 1
+matrix3_klamath[26,3] <- 1 #Klamath
+matrix3_klamath[26,c(1:2)] <- 0 
+matrix3_klamath
+```
+
+###matrix4_klamath
+```{r echo = T}
+#Hypothesis 3: tributary versus tributary versus Klamath
+matrix4_klamath <-matrix(nrow=26,ncol=5)
+matrix4_klamath[c(1:2,4:5,7:8,10),1] <- 1  #Seiad Creek Ponds
+matrix4_klamath[c(1:2,4:5,7:8,10),c(2:5)] <- 0
+matrix4_klamath[c(3,6,9,11),2] <- 1 #Seiad Creek
+matrix4_klamath[c(3,6,9,11),c(1,3:5)] <- 0
+matrix4_klamath[c(12:13,15:17,19:21,23:25),3] <- 1 #Horse Creek Ponds
+matrix4_klamath[c(12:13,15:17,19:21,23:25),c(1,2,4,5)] <- 0
+matrix4_klamath[c(14,18,22),4] <- 1 #Horse Creek
+matrix4_klamath[c(14,18,22),c(1:3,5)] <- 0
+matrix4_klamath[26,5] <- 1 #Klamath
+matrix4_klamath[c(26),c(1:4)] <- 0
+matrix4_klamath
+```
+
+###matrix5_klamath
+```{r echo = T}
+#Hypothesis 4: All sensors are the same
+matrix5_klamath <-  matrix(nrow=26, ncol=1)
+matrix5_klamath[,] <- 1
+matrix5_klamath
+
+saveRDS(matrix2_klamath,"matrix2_klamath.rds")
+saveRDS(matrix3_klamath,"matrix3_klamath.rds")
+saveRDS(matrix4_klamath,"matrix4_klamath.rds")
+saveRDS(matrix5_klamath,"matrix5_klamath.rds")
+```
+
+##MARSS models
+###Create a FT for seasonality and combine with AirTemp
+```{r}
+#Correct for seasonality using Fourier Series
+TT = ncol(transformed_dat_klamath) # number of time periods/samples
+period = 365 # number of "seasons" (e.g., 12 months per year)
+per.1st = 182 # first "season" (e.g., Jan = 1, July = 7)
+c = diag(period) # create factors for seasons
+for(i in 2:(ceiling(TT/period))) {c = cbind(c,diag(period))}
+dim(c)
+
+#Create Fourier Series
+cos.t = cos(2 * pi * seq(TT) / period)
+sin.t = sin(2 * pi * seq(TT) / period)
+c.Four = rbind(cos.t,sin.t)
+cor(c.Four[1,],c.Four[2,]) # not correlated!
+matplot(t(c.Four), type="l")
+
+#Now fit model with seasonality AND an additional covariate (airtemp from above)
+matrixc_klamath_z <- zscore(matrixc_klamath)
+newcovarsFour_airtemp <-rbind(c.Four, "airtemp"=matrixc_klamath_z)
+matplot(t(newcovarsFour_airtemp), type="l", col=c("black","red","blue"))
+```
+
+####Things I tried: 1) zscore data + covar; 2) no zscore; 3) zscore covar; 4) zscore data; 5) no covar at all; 6) zscore covar + FT; 6) just FT
+
+###model 1
+```{r}
+#Hypothesis 1, Model 1: all separate
+mod11_klamath = list()
+mod11_klamath$A = "zero" #no trend because we z scored
+mod11_klamath$Z = matrix2_klamath
+mod11_klamath$R = "diagonal and equal" #all the sensors are same, so observation error should be same
+mod11_klamath$Q = "diagonal and unequal" 
+mod11_klamath$B = "identity" #assuming no species interactions
+mod11_klamath$U = "zero" #no trend because we z scored 
+mod11_klamath$C = "unequal" #Can set C to unequal because it is going off the Z matrix where I have already indicated how to split up the sites.
+mod11_klamath$c = matrixc_klamath
+mod11_klamath.fit = MARSS(transformed_dat_klamath, model=mod11_klamath, control=list(maxit=10000))
+mod11_klamath.params = MARSSparamCIs(mod11_klamath.fit)
+saveRDS(mod11_klamath.fit,"mod11_klamath.fit.rds")
+saveRDS(mod11_klamath.params,"mod11_klamath.params.rds")
+```
+
+####Messing with Residuals
+```{r}
+mod11_klamath.fit <- readRDS("mod11_klamath.fit.rds")
+mod11_klamath.params <- readRDS("mod11_klamath.params.rds")
+
+#model.residuals = the model residuals (data minus model predicted values) as a n x T matrix
+
+#tT: smoothed residuals conditioned on all the data t=1 to T, aka smoothation residuals *Smoothed residuals are autocorrelated so an ACF test would not reveal model inadequacy
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tT")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+}
+
+#tt1: one-step-ahead residuals, aka innovations residuals
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+}
+
+#tt: contemporaneous residuals, only for the observations
+par(mfrow=c(4,2), mai=c(0.1,0.5,0.2,0.1),omi=c(0.5,0,0,0))
+for (j in 1:12) {
+  plot.ts(residuals<-MARSSresiduals(mod11_klamath.fit, type = "tt")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+}
+
+```
+
+###model 2
+```{r}
+#Hypothesis 2, Model 3: ponds vs. creeks 
+mod12_klamath <- mod11_klamath 
+mod12_klamath$Z <- matrix3_klamath
+mod12_klamath$c <- matrixc_klamath
+mod12_klamath.fit = MARSS(transformed_dat_klamath, model=mod12_klamath, control=list(maxit=10000))
+mod12_klamath.params = MARSSparamCIs(mod12_klamath.fit)
+saveRDS(mod12_klamath.fit,"mod12_klamath.fit.rds")
+saveRDS(mod12_klamath.params,"mod12_klamath.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:8) {
+    plot.ts(residuals<-MARSSresiduals(mod12_klamath.fit, type = "tt")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
+
+###model 3
+```{r}
+#Hypothesis 3, Model 3: Tributary versus tributary
+mod13_klamath <- mod11_klamath
+mod13_klamath$Z = matrix4_klamath
+mod13_klamath.fit = MARSS(transformed_dat_klamath, model=mod13_klamath, control=list(maxit=10000))
+mod13_klamath.params = MARSSparamCIs(mod13_klamath.fit)
+saveRDS(mod13_klamath.fit,"mod13_klamath.fit.rds")
+saveRDS(mod13_klamath.params,"mod13_klamath.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod13_klamath.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
+
+###model 4
+```{r}
+#Hypothesis 4, Model 4: All same
+mod14_klamath <- mod11_klamath
+mod14_klamath$Z <- matrix5_klamath
+mod14_klamath.fit = MARSS(transformed_dat_klamath, model=mod14_klamath, control=list(maxit=10000))
+mod14_klamath.params =MARSSparamCIs(mod14_klamath.fit)
+saveRDS(mod14_klamath.fit,"mod14_klamath.fit.rds")
+saveRDS(mod14_klamath.params,"mod14_klamath.params.rds")
+
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod14_klamath.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
+
+##AICc 
+```{r}
+data.frame(Model=c("Model11_klamath", "Model12_klamath", "Model13_klamath", "Model14_klamath"),
+           AICc=round(c(mod11_klamath.fit$AICc,
+                        mod12_klamath.fit$AICc,
+                        mod13_klamath.fit$AICc,
+                        mod14_klamath.fit$AICc),1))
+```
+
