@@ -1,0 +1,217 @@
+---
+title: "Albertscode_forJessie"
+output: html_document
+---
+
+```{r}
+library(MARSS)
+library(xtable)
+library(tidyverse)
+```
+
+#Read in data 
+```{r echo = T, results = "hide", messages = F}
+#Matrix Klamath + pond dataset
+daily_means_long_klamath <- readRDS('daily_means_long_klamath.rds')
+transformed_dat_klamath <- readRDS('transformed_dat_klamath.rds')
+transformed_dat_klamath_df <- as.data.frame(t(transformed_dat_klamath))
+str(transformed_dat_klamath)
+
+#Matrix Airtemp dataset
+covariate_klamath <- readRDS('covariate.rds')
+transformed_covariate_klamath <- zscore(covariate_klamath)
+```
+# Steps:
+# 1) Among sensor replicates, drop time series with (many) gaps. 
+# 2) Then take mean across replicate sensors, so that we end up with 1 time series per habitat, 2+9+1 (12 x 378)
+
+```{r}
+#AP
+color <- c("AP1" = "blue", "AP3" = "red")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = AP1, color = "AP1")) +
+  geom_line(aes(x = day, y = AP3, color = "AP3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("AP1","AP3"))
+#need to remove AP1
+```
+
+
+```{r}
+#SP
+color <- c("SP1" = "blue", "SP2" = "red")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = SP1, color = "SP1")) +
+  geom_line(aes(x = day, y = SP2, color = "SP2"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("SP1","SP2"))
+#both good, need to take average
+transformed_dat_klamath_df$SP <- (transformed_dat_klamath_df$SP1 + transformed_dat_klamath_df$SP2)/2
+```
+
+```{r}
+#FG
+color <- c("FG2" = "blue", "FG3" = "red")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = FG2, color = "FG2")) +
+  geom_line(aes(x = day, y = FG3, color = "FG3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("FG2","FG3"))
+#need to remove FG2
+```
+
+```{r}
+#GP
+color <- c("GP1" = "blue", "GP2" = "red", "GP3" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = GP1, color = "GP1")) +
+  geom_line(aes(x = day, y = GP2, color = "GP2"))+
+  geom_line(aes(x = day, y = GP3, color = "GP3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("GP1","GP2","GP3"))
+#need to remove GP1
+transformed_dat_klamath_df$GP <- (transformed_dat_klamath_df$GP2 + transformed_dat_klamath_df$GP3)/2
+
+```
+
+```{r}
+#UL
+color <- c("ULout" = "blue", "UL1" = "red", "UL3" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = ULout, color = "ULout")) +
+  geom_line(aes(x = day, y = UL1, color = "UL1"))+
+  geom_line(aes(x = day, y = UL3, color = "UL3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("ULout","UL1","UL3"))
+#need to remove UL1
+transformed_dat_klamath_df$UL <- (transformed_dat_klamath_df$ULout + transformed_dat_klamath_df$UL3)/2
+
+```
+
+```{r}
+#LL
+color <- c("LL1" = "blue", "LL2" = "red", "LL3" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = LL1, color = "LL1")) +
+  geom_line(aes(x = day, y = LL2, color = "LL2"))+
+  geom_line(aes(x = day, y = LL3, color = "LL3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("LL1","LL2","LL3"))
+#all ok
+transformed_dat_klamath_df$LL <- (transformed_dat_klamath_df$LL1 + transformed_dat_klamath_df$LL2 + transformed_dat_klamath_df$LL3)/3
+```
+
+```{r}
+#SC
+color <- c("APck" = "blue", "SPck" = "red", "LSck" = "green", "MayCk"="orange")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = APck, color = "APck")) +
+  geom_line(aes(x = day, y = SPck, color = "SPck"))+
+  geom_line(aes(x = day, y = LSck, color = "LSck"))+
+  geom_line(aes(x = day, y = MayCk, color = "MayCk"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("APck","SPck","LSck","MayCk"))
+#need to remove APck and SPck
+transformed_dat_klamath_df$SC <- (transformed_dat_klamath_df$LSck + transformed_dat_klamath_df$MayCk)/2
+```
+
+```{r}
+#HC
+color <- c("FGck" = "blue", "GPck" = "red", "ULck" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = FGck, color = "FGck")) +
+  geom_line(aes(x = day, y = GPck, color = "GPck"))+
+  geom_line(aes(x = day, y = ULck, color = "ULck"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("FGck","GPck","ULck"))
+#need to remove GPck
+transformed_dat_klamath_df$HC <- (transformed_dat_klamath_df$FGck + transformed_dat_klamath_df$ULck)/2
+```
+#Matrix of transformed data with 12 sites (condensed_transdat)
+```{r}
+condensed_transdat_df <- cbind(AP = transformed_dat_klamath_df$AP3, SP = transformed_dat_klamath_df$SP, Durazo = transformed_dat_klamath_df$Durazo, LS = transformed_dat_klamath_df$LS, May = transformed_dat_klamath_df$May, FG = transformed_dat_klamath_df$FG3, GP = transformed_dat_klamath_df$GP, UL = transformed_dat_klamath_df$UL, LL = transformed_dat_klamath_df$LL, SC = transformed_dat_klamath_df$SC, HC = transformed_dat_klamath_df$HC, KSV = transformed_dat_klamath_df$KSV)
+condensed_transdat <- as.matrix(t(condensed_transdat_df))
+str(condensed_transdat)
+
+saveRDS(condensed_transdat, "condensed_transdat.rds")
+```
+
+
+# Hypothesis 1: all states have different levels of stochastic (Q) and deterministic (C) variability 
+## AICc -9599.906
+```{r}
+mod1_condense = list()
+mod1_condense$A = "zero" 
+mod1_condense$Z = "identity"
+mod1_condense$R = "zero" #all the sensors are same, so observation error should be same
+mod1_condense$Q = "diagonal and unequal" 
+mod1_condense$B = "diagonal and unequal" #assuming no species interactions
+mod1_condense$U = "zero"  
+mod1_condense$C = "unequal" 
+mod1_condense$c = transformed_covariate_klamath
+mod1_condense.fit = MARSS(condensed_transdat, model=mod1_condense)
+mod1_condense.params =MARSSparamCIs(mod1_condense.fit)
+MARSSparamCIs(mod1_condense.fit)
+```
+
+# Hypothesis 2: all states have save levels of stochastic (Q) and deterministic (C) variability
+## AICc -8356.184  
+```{r}
+mod2_condense = list()
+mod2_condense$A = "zero" 
+mod2_condense$Z = "identity"
+mod2_condense$R = "zero" #all the sensors are same, so observation error should be same
+mod2_condense$Q = "diagonal and equal" 
+mod2_condense$B = "diagonal and equal" #assuming no species interactions
+mod2_condense$U = "zero"  
+mod2_condense$C = "equal" 
+mod2_condense$c = transformed_covariate_klamath
+mod2_condense.fit = MARSS(condensed_transdat, model=mod2_condense)
+mod2_condense.params =MARSSparamCIs(mod2_condense.fit)
+MARSSparamCIs(mod2_condense.fit)
+```
+
+
+# Hypothesis 3: Habitat type: Creeks vs ponds vs Klamath
+
+```{r}
+mod3_condense = list()
+## Modify matrices
+# 1st: group time series into categories
+hypothesis = c("pond","pond","pond","pond",
+               "pond","pond","pond","pond",
+               "pond","creek","creek","Klamath")
+
+# 2nd: build C matrix (12 x 1)
+mod3_condense$C = matrix(hypothesis)
+mod3_condense$c = transformed_covariate_klamath
+
+# 3rd: build Q matrix (12 x 12, with "C vector" in its diagonal)
+Q<-as.data.frame(diag(12))
+diag(Q) = hypothesis#Ahhhh! Can't put numbers and characters in the same matrix! Tried as a data frame but MARSS got mad. 
+
+# 4th: B, identical as Q
+B=Q
+
+mod3_condense$A = "zero" 
+mod3_condense$Z = "identity"
+mod3_condense$R = "zero" #all the sensors are same, so observation error should be same
+mod3_condense$Q = Q 
+mod3_condense$B = Q
+mod3_condense$U = "zero"  
+mod3_condense$C = matrix(hypothesis) 
+mod3_condense$c = transformed_covariate_klamath
+mod3_condense.fit = MARSS(condensed_transdat, model=mod3_condense)
+mod2_condense.params =MARSSparamCIs(mod3_condense.fit)
+MARSSparamCIs(mod3_condense.fit)
+
+```
+
