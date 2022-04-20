@@ -1,6 +1,8 @@
 ---
-title: "Albertscode_forJessie"
-output: html_document
+title: "2021_MARSSModel_Condense"
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r}
@@ -182,7 +184,7 @@ MARSSparamCIs(mod2_condense.fit)
 
 # Hypothesis 3: Habitat type: Creeks vs ponds vs Klamath
 
-```{r}
+```{r, eval = FALSE}
 mod3_condense = list()
 ## Modify matrices
 # 1st: group time series into categories
