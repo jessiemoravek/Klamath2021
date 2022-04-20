@@ -183,7 +183,7 @@ MARSSparamCIs(mod2_condense.fit)
 
 
 # Hypothesis 3: Habitat type: Creeks vs ponds vs Klamath
-
+## AICc: -8586.263   
 ```{r, eval = FALSE}
 mod3_condense = list()
 ## Modify matrices
@@ -197,11 +197,21 @@ mod3_condense$C = matrix(hypothesis)
 mod3_condense$c = transformed_covariate_klamath
 
 # 3rd: build Q matrix (12 x 12, with "C vector" in its diagonal)
-Q<-as.data.frame(diag(12))
-diag(Q) = hypothesis#Ahhhh! Can't put numbers and characters in the same matrix! Tried as a data frame but MARSS got mad. 
+Q <-  matrix(list("pond",0,0,0,0,0,0,0,0,0,0,0,
+                  0,"pond",0,0,0,0,0,0,0,0,0,0,
+                  0,0,"pond",0,0,0,0,0,0,0,0,0,
+                  0,0,0,"pond",0,0,0,0,0,0,0,0,
+                  0,0,0,0,"pond",0,0,0,0,0,0,0,
+                  0,0,0,0,0,"pond",0,0,0,0,0,0,
+                  0,0,0,0,0,0,"pond",0,0,0,0,0,
+                  0,0,0,0,0,0,0,"pond",0,0,0,0,
+                  0,0,0,0,0,0,0,0,"pond",0,0,0,
+                  0,0,0,0,0,0,0,0,0,"creek",0,0,
+                  0,0,0,0,0,0,0,0,0,0,"creek",0,
+                  0,0,0,0,0,0,0,0,0,0,0,"Klamath"),12,12)
 
 # 4th: B, identical as Q
-B=Q
+B <- Q
 
 mod3_condense$A = "zero" 
 mod3_condense$Z = "identity"
@@ -212,8 +222,52 @@ mod3_condense$U = "zero"
 mod3_condense$C = matrix(hypothesis) 
 mod3_condense$c = transformed_covariate_klamath
 mod3_condense.fit = MARSS(condensed_transdat, model=mod3_condense)
-mod2_condense.params =MARSSparamCIs(mod3_condense.fit)
+mod3_condense.params =MARSSparamCIs(mod3_condense.fit)
 MARSSparamCIs(mod3_condense.fit)
 
 ```
+# Hypothesis 4: By watershed
+## AICc:   -8597.364  
+```{r, eval = FALSE}
+mod4_condense = list()
+## Modify matrices
+# 1st: group time series into categories
+rownames(condensed_transdat)
+hypothesis2 = c("SC","SC","SC","SC",
+               "SC","HC","HC","HC",
+               "HC","SC","HC","Klamath")
 
+# 2nd: build C matrix (12 x 1)
+mod4_condense$C = matrix(hypothesis2)
+mod4_condense$c = transformed_covariate_klamath
+
+# 3rd: build Q matrix (12 x 12, with "C vector" in its diagonal)
+Q <-  matrix(list("SC",0,0,0,0,0,0,0,0,0,0,0,
+                  0,"SC",0,0,0,0,0,0,0,0,0,0,
+                  0,0,"SC",0,0,0,0,0,0,0,0,0,
+                  0,0,0,"SC",0,0,0,0,0,0,0,0,
+                  0,0,0,0,"SC",0,0,0,0,0,0,0,
+                  0,0,0,0,0,"HC",0,0,0,0,0,0,
+                  0,0,0,0,0,0,"HC",0,0,0,0,0,
+                  0,0,0,0,0,0,0,"HC",0,0,0,0,
+                  0,0,0,0,0,0,0,0,"HC",0,0,0,
+                  0,0,0,0,0,0,0,0,0,"SC",0,0,
+                  0,0,0,0,0,0,0,0,0,0,"HC",0,
+                  0,0,0,0,0,0,0,0,0,0,0,"Klamath"),12,12)
+
+# 4th: B, identical as Q
+B <- Q
+
+mod4_condense$A = "zero" 
+mod4_condense$Z = "identity"
+mod4_condense$R = "zero" #all the sensors are same, so observation error should be same
+mod4_condense$Q = Q 
+mod4_condense$B = Q
+mod4_condense$U = "zero"  
+mod4_condense$C = matrix(hypothesis2) 
+mod4_condense$c = transformed_covariate_klamath
+mod4_condense.fit = MARSS(condensed_transdat, model=mod4_condense)
+mod4_condense.params =MARSSparamCIs(mod4_condense.fit)
+MARSSparamCIs(mod4_condense.fit)
+
+```
