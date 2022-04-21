@@ -184,7 +184,7 @@ MARSSparamCIs(mod2_condense.fit)
 
 # Hypothesis 3: Habitat type: Creeks vs ponds vs Klamath
 ## AICc: -8586.263   
-```{r, eval = FALSE}
+```{r}
 mod3_condense = list()
 ## Modify matrices
 # 1st: group time series into categories
@@ -228,7 +228,7 @@ MARSSparamCIs(mod3_condense.fit)
 ```
 # Hypothesis 4: By watershed
 ## AICc:   -8597.364  
-```{r, eval = FALSE}
+```{r}
 mod4_condense = list()
 ## Modify matrices
 # 1st: group time series into categories
