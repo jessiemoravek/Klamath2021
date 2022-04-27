@@ -50,7 +50,17 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("SP1","SP2"))
 #both good, need to take average
-transformed_dat_klamath_df$SP <- (transformed_dat_klamath_df$SP1 + transformed_dat_klamath_df$SP2)/2
+transformed_dat_klamath_df$SP <- rowMeans(transformed_dat_klamath_df[,c('SP1', 'SP2')], na.rm=TRUE)
+
+color <- c("SP1" = "blue", "SP2" = "red", SP = "black")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = SP1, color = "SP1")) +
+  geom_line(aes(x = day, y = SP2, color = "SP2"))+
+  geom_line(aes(x = day, y = SP, color = "SP"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("SP1","SP2", "SP"))
+
 ```
 
 ```{r}
@@ -76,7 +86,16 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("GP1","GP2","GP3"))
 #need to remove GP1
-transformed_dat_klamath_df$GP <- (transformed_dat_klamath_df$GP2 + transformed_dat_klamath_df$GP3)/2
+transformed_dat_klamath_df$GP <- rowMeans(transformed_dat_klamath_df[,c('GP2', 'GP3')], na.rm=TRUE)
+
+color <- c("GP" = "black", "GP2" = "red", "GP3" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = GP, color = "GP")) +
+  geom_line(aes(x = day, y = GP2, color = "GP2"))+
+  geom_line(aes(x = day, y = GP3, color = "GP3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("GP","GP2","GP3"))
 
 ```
 
@@ -91,7 +110,16 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("ULout","UL1","UL3"))
 #need to remove UL1
-transformed_dat_klamath_df$UL <- (transformed_dat_klamath_df$ULout + transformed_dat_klamath_df$UL3)/2
+transformed_dat_klamath_df$UL <- rowMeans(transformed_dat_klamath_df[,c('ULout', 'UL3')], na.rm=TRUE)
+
+color <- c("ULout" = "blue", "UL" = "black", "UL3" = "green")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = ULout, color = "ULout")) +
+  geom_line(aes(x = day, y = UL, color = "UL"))+
+  geom_line(aes(x = day, y = UL3, color = "UL3"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("ULout","UL","UL3"))
 
 ```
 
@@ -106,7 +134,17 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("LL1","LL2","LL3"))
 #all ok
-transformed_dat_klamath_df$LL <- (transformed_dat_klamath_df$LL1 + transformed_dat_klamath_df$LL2 + transformed_dat_klamath_df$LL3)/3
+transformed_dat_klamath_df$LL <- rowMeans(transformed_dat_klamath_df[,c('LL1','LL2', 'LL3')], na.rm=TRUE)
+
+color <- c("LL1" = "blue", "LL2" = "red", "LL3" = "green", 'LL' = "black")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = LL1, color = "LL1")) +
+  geom_line(aes(x = day, y = LL2, color = "LL2"))+
+  geom_line(aes(x = day, y = LL3, color = "LL3"))+
+   geom_line(aes(x = day, y = LL, color = "LL"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("LL1","LL2","LL3", "LL"))
 ```
 
 ```{r}
@@ -121,7 +159,16 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("APck","SPck","LSck","MayCk"))
 #need to remove APck and SPck
-transformed_dat_klamath_df$SC <- (transformed_dat_klamath_df$LSck + transformed_dat_klamath_df$MayCk)/2
+transformed_dat_klamath_df$SC <-  rowMeans(transformed_dat_klamath_df[,c('LSck','MayCk')], na.rm=TRUE)
+
+color <- c("SC" = "black","LSck" = "green", "MayCk"="orange")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = SC, color = "SC"))+
+  geom_line(aes(x = day, y = LSck, color = "LSck"))+
+  geom_line(aes(x = day, y = MayCk, color = "MayCk"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("SC","LSck","MayCk"))
 ```
 
 ```{r}
@@ -135,7 +182,16 @@ transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
   theme_classic()+
   scale_color_manual(values = color, labels = c("FGck","GPck","ULck"))
 #need to remove GPck
-transformed_dat_klamath_df$HC <- (transformed_dat_klamath_df$FGck + transformed_dat_klamath_df$ULck)/2
+transformed_dat_klamath_df$HC <- rowMeans(transformed_dat_klamath_df[,c('ULck','FGck')], na.rm=TRUE)
+
+color <- c("FGck" = "blue", "ULck" = "green", "HC" = "black")
+transformed_dat_klamath_df %>% rowid_to_column(var = "day") %>% ggplot()+
+  geom_line(aes(x = day, y = FGck, color = "FGck")) +
+  geom_line(aes(x = day, y = ULck, color = "ULck"))+
+   geom_line(aes(x = day, y = HC, color = "HC"))+
+  labs(x = "day", y = "site", color = "Legend")+
+  theme_classic()+
+  scale_color_manual(values = color, labels = c("FGck","ULck", "HC"))
 ```
 #Matrix of transformed data with 12 sites (condensed_transdat)
 ```{r}
@@ -271,3 +327,23 @@ mod4_condense.params =MARSSparamCIs(mod4_condense.fit)
 MARSSparamCIs(mod4_condense.fit)
 
 ```
+
+#Plot Covariates
+```{r}
+mod1_condense.fit = MARSS(condensed_transdat, model=mod1_condense)
+mod1_condense.params =MARSSparamCIs(mod1_condense.fit)
+MARSSparamCIs(mod1_condense.fit)
+
+
+mod1_condense.params
+mod1_condense_df <- broom::tidy(mod1_condense.fit)
+
+ggplot(data = mod1_condense_df) + 
+  geom_pointrange(data = mod1_condense_df[c(37:48),], aes(x = term, y = estimate, ymin = conf.low, ymax = conf.up), color = "red") +
+  geom_hline(yintercept = 0) +
+  labs(x = "Air Temperature Effects",
+       y = "Est. Air Temp Effects") +
+  ggtitle("Air Temperature Effects") +
+  theme(axis.text.x=element_text(angle = 90, hjust = 1))
+```
+
