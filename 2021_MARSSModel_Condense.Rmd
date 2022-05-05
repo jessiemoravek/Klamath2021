@@ -338,12 +338,17 @@ MARSSparamCIs(mod1_condense.fit)
 mod1_condense.params
 mod1_condense_df <- broom::tidy(mod1_condense.fit)
 
+png("Fig_AirTempEffects.png", width = 700, height = 400)
+labels <- c("Alexander", "Durazo", "FishGulch", "Goodman","HorseCreek","Klamath","LLawrence","LowerSeiad","May","SeiadCreek","Stender","ULawrence")
 ggplot(data = mod1_condense_df) + 
-  geom_pointrange(data = mod1_condense_df[c(37:48),], aes(x = term, y = estimate, ymin = conf.low, ymax = conf.up), color = "red") +
+  geom_pointrange(data = mod1_condense_df[c(37:48),], aes(x = term, y = estimate, ymin = conf.low, ymax = conf.up), color = "black") +
   geom_hline(yintercept = 0) +
-  labs(x = "Air Temperature Effects",
-       y = "Est. Air Temp Effects") +
+  labs(x = "Sites",
+       y = "Air Temperature Effects") +
   ggtitle("Air Temperature Effects") +
-  theme(axis.text.x=element_text(angle = 90, hjust = 1))
+  theme_classic()+
+  theme(text=element_text(size=20),axis.text.x=element_text(angle = 90, hjust = 1))+
+  scale_x_discrete(labels= labels)
+dev.off()
 ```
 
