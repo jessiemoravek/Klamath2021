@@ -1,0 +1,5448 @@
+---
+title: "GCB Fish recruitment stability script"
+author: "Colombano, Denise"
+date: "4/7/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# data wrangling
+library(tidyverse)
+library(ggthemes)
+library(broom)
+
+# time-series packages
+library(devtools)
+install_github("nwfsc-timeseries/MARSS@*release") #for updated version
+library(MARSS)
+```
+
+
+# Import derived data 
+
+From Dryad repository
+See README files for more detailed metadata
+```{r}
+# fish data - response variable
+# summarized as mean annual log catch per unit effort for each species, region, and gear type
+# filtered to include data from April-October 1980-2018
+# years 1-39 are 1980-2018
+df0_logcpue <- read_csv("CDFW_BayStudy_age0_logcpue.csv")
+View(df0_logcpue)
+
+
+# flow and sst data - covariate data
+# summarized as mean annual Flow (@ Chipps Island; DWR Dayflow) and SST (@ Gulf of Farallons; NOAA Shore Stations)
+# filtered to include data from April-October 1980-2018
+flow_sst_matrix <- read_csv("DWR_mean_flow_and_NOAA_mean_SST_zscore_Apr-Oct_1980-2018.csv") %>% 
+  column_to_rownames(var="Covariate") %>% 
+  as.matrix()
+View(flow_sst_matrix)
+```
+
+
+# MARSS Models
+
+## LONSME
+```{r}
+# lonsme time series dataframe
+df0_lonsme <- df0_logcpue %>% filter(Species=="LONSMEAge0")
+
+# log cpue dataframe
+df0_logcpue_lonsme <- df0_lonsme[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_lonsme <- df0_lonsme[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_lonsme$region_gear
+R1
+
+A1 <- df0_metadata_lonsme$region_gear
+A1
+
+Q1 <- df0_metadata_lonsme$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_lonsme$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 34, 34)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 4, 4)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_lonsme
+lonsme0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+lonsme0_CIs <- MARSSparamCIs(lonsme0, method="parametric", nboot=1000)
+lonsme0_CIs
+
+MARSS::autoplot.marssMLE(lonsme0)
+ 
+lonsme0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 34, 34)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_lonsme
+lonsme1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+lonsme1_CIs <- MARSSparamCIs(lonsme1, method="parametric", nboot=1000)
+lonsme1_CIs
+
+MARSS::autoplot.marssMLE(lonsme1)
+
+lonsme1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 34, 34)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_lonsme
+lonsme2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+
+lonsme2_CIs <- MARSSparamCIs(lonsme2, method="parametric", nboot=1000)
+lonsme2_CIs
+ 
+MARSS::autoplot.marssMLE(lonsme2)
+
+lonsme2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 34, 34)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_lonsme
+lonsme3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+lonsme3_CIs <- MARSSparamCIs(lonsme3, method="parametric", nboot=1000)
+lonsme3_CIs
+
+MARSS::autoplot.marssMLE(lonsme3)
+lonsme3$AICc
+```
+
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 34, 34)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_lonsme
+lonsme4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+lonsme4_CIs <- MARSSparamCIs(lonsme4, method = "parametric", nboot=1000)
+lonsme4_CIs
+ 
+MARSS::autoplot.marssMLE(lonsme4)
+ 
+lonsme4$AICc
+```
+
+```{r}
+lonsme0$AICc
+lonsme1$AICc
+lonsme2$AICc
+lonsme3$AICc
+lonsme4$AICc
+```
+
+
+## PACHER
+```{r}
+# pacher time series dataframe
+df0_pacher <- df0_logcpue %>% filter(Species=="PACHERAge0")
+
+# log cpue dataframe
+df0_logcpue_pacher <- df0_pacher[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_pacher <- df0_pacher[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_pacher$region_gear
+R1
+
+A1 <- df0_metadata_pacher$region_gear
+A1
+
+Q1 <- df0_metadata_pacher$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_pacher$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 30, 30)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 4, 4)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacher
+pacher0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacher0_CIs <- MARSSparamCIs(pacher0, method="parametric", nboot=1000)
+pacher0_CIs
+
+MARSS::autoplot.marssMLE(pacher0)
+
+pacher0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 30, 30)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacher
+pacher1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacher1_CIs <- MARSSparamCIs(pacher1, method="parametric", nboot=1000)
+pacher1_CIs
+
+MARSS::autoplot.marssMLE(pacher1)
+
+pacher1$AICc
+```
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 30, 30)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacher
+pacher2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacher2_CIs <- MARSSparamCIs(pacher2, method="parametric", nboot=1000)
+pacher2_CIs
+
+MARSS::autoplot.marssMLE(pacher2)
+
+pacher2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 30, 30)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacher
+pacher3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacher3_CIs <- MARSSparamCIs(pacher3, method="parametric", nboot=1000)
+pacher3_CIs
+
+MARSS::autoplot.marssMLE(pacher3)
+
+pacher3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 30, 30)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacher
+pacher4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacher4_CIs <- MARSSparamCIs(pacher4, method = "parametric", nboot=1000)
+pacher4_CIs
+
+MARSS::autoplot.marssMLE(pacher4)
+
+pacher4$AICc
+```
+
+```{r}
+pacher0$AICc
+pacher1$AICc
+pacher2$AICc
+pacher3$AICc
+pacher4$AICc
+```
+
+
+## ENGSOL
+```{r}
+# engsol time series dataframe
+df0_engsol <- df0_logcpue %>% filter(Species=="ENGSOLAge0")
+
+# log cpue dataframe
+df0_logcpue_engsol <- df0_engsol[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_engsol <- df0_engsol[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_engsol$region_gear
+R1
+
+A1 <- df0_metadata_engsol$region_gear
+A1
+
+Q1 <- df0_metadata_engsol$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_engsol$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_engsol
+engsol0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+engsol0_CIs <- MARSSparamCIs(engsol0, method="parametric", nboot=1000)
+engsol0_CIs
+
+MARSS::autoplot.marssMLE(engsol0)
+
+engsol0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_engsol
+engsol1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+engsol1_CIs <- MARSSparamCIs(engsol1, method="parametric", nboot=1000)
+engsol1_CIs
+
+MARSS::autoplot.marssMLE(engsol1)
+
+engsol1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_engsol
+engsol2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+engsol2_CIs <- MARSSparamCIs(engsol2, method="parametric", nboot=1000)
+engsol2_CIs
+
+MARSS::autoplot.marssMLE(engsol2)
+
+engsol2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_engsol
+engsol3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+engsol3_CIs <- MARSSparamCIs(engsol3, method="parametric", nboot=1000)
+engsol3_CIs
+ 
+MARSS::autoplot.marssMLE(engsol3)
+
+engsol3$AICc
+```
+
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_engsol
+engsol4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+engsol4_CIs <- MARSSparamCIs(engsol4, method = "parametric", nboot=1000)
+engsol4_CIs
+
+MARSS::autoplot.marssMLE(engsol4)
+
+engsol4$AICc
+```
+
+```{r}
+engsol0$AICc
+engsol1$AICc
+engsol2$AICc
+engsol3$AICc
+engsol4$AICc
+```
+
+
+
+## BAYGOB
+```{r}
+# baygob time series dataframe
+df0_baygob <- df0_logcpue %>% filter(Species=="BAYGOBAge0")
+
+# log cpue dataframe
+df0_logcpue_baygob <- df0_baygob[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_baygob <- df0_baygob[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_baygob$region_gear
+R1
+
+A1 <- df0_metadata_baygob$region_gear
+A1
+
+Q1 <- df0_metadata_baygob$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_baygob$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_baygob
+baygob0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+baygob0_CIs <- MARSSparamCIs(baygob0, method="parametric", nboot=1000)
+baygob0_CIs
+
+MARSS::autoplot.marssMLE(baygob0)
+
+baygob0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_baygob
+baygob1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+baygob1_CIs <- MARSSparamCIs(baygob1, method="parametric", nboot=1000)
+baygob1_CIs
+
+MARSS::autoplot.marssMLE(baygob1)
+ 
+baygob1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_baygob
+baygob2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+baygob2_CIs <- MARSSparamCIs(baygob2, method="parametric", nboot=1000)
+baygob2_CIs
+
+MARSS::autoplot.marssMLE(baygob2)
+
+baygob2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_baygob
+baygob3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+baygob3_CIs <- MARSSparamCIs(baygob3, method="parametric", nboot=1000)
+baygob3_CIs
+
+MARSS::autoplot.marssMLE(baygob3)
+
+baygob3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 24, 24)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_baygob
+baygob4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+baygob4_CIs <- MARSSparamCIs(baygob4, method = "parametric", nboot=1000)
+baygob4_CIs
+
+MARSS::autoplot.marssMLE(baygob4)
+
+baygob4$AICc
+```
+
+```{r}
+baygob0$AICc
+baygob1$AICc
+baygob2$AICc
+baygob3$AICc
+baygob4$AICc
+```
+
+
+
+## NORANC
+```{r}
+# noranc time series dataframe
+df0_noranc <- df0_logcpue %>% filter(Species=="NORANCAge0")
+
+# log cpue dataframe
+df0_logcpue_noranc <- df0_noranc[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_noranc <- df0_noranc[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_noranc$region_gear
+R1
+
+A1 <- df0_metadata_noranc$region_gear
+A1
+
+Q1 <- df0_metadata_noranc$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_noranc$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 31, 31)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 4, 4)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_noranc
+noranc0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+noranc0_CIs <- MARSSparamCIs(noranc0, method="parametric", nboot=1000)
+noranc0_CIs
+
+MARSS::autoplot.marssMLE(noranc0)
+
+noranc0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 31, 31)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_noranc
+noranc1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+noranc1_CIs <- MARSSparamCIs(noranc1, method="parametric", nboot=1000)
+noranc1_CIs
+
+MARSS::autoplot.marssMLE(noranc1)
+
+noranc1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 31, 31)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_noranc
+noranc2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+noranc2_CIs <- MARSSparamCIs(noranc2, method="parametric", nboot=1000)
+noranc2_CIs
+
+MARSS::autoplot.marssMLE(noranc2)
+
+noranc2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 31, 31)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_noranc
+noranc3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+noranc3_CIs <- MARSSparamCIs(noranc3, method="parametric", nboot=1000)
+noranc3_CIs
+
+MARSS::autoplot.marssMLE(noranc3)
+
+noranc3$AICc
+```
+
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 31, 31)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_noranc
+noranc4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+noranc4_CIs <- MARSSparamCIs(noranc4, method="parametric", nboot=1000)
+noranc4_CIs
+
+MARSS::autoplot.marssMLE(noranc4)
+
+noranc4$AICc
+```
+
+```{r}
+noranc0$AICc
+noranc1$AICc
+noranc2$AICc
+noranc3$AICc
+noranc4$AICc
+```
+
+
+## AMESHA
+```{r}
+# amesha time series dataframe
+df0_amesha <- df0_logcpue %>% filter(Species=="AMESHAAge0")
+
+# log cpue dataframe
+df0_logcpue_amesha <- df0_amesha[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_amesha <- df0_amesha[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_amesha$region_gear
+R1
+View(R1)
+
+A1 <- df0_metadata_amesha$region_gear
+A1
+
+Q1 <- df0_metadata_amesha$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_amesha$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_amesha
+amesha0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+amesha0_CIs <- MARSSparamCIs(amesha0, method="parametric", nboot=1000)
+amesha0_CIs
+
+MARSS::autoplot.marssMLE(amesha0)
+
+amesha0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_amesha
+amesha1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+amesha1_CIs <- MARSSparamCIs(amesha1, method="parametric", nboot=1000)
+amesha1_CIs
+
+MARSS::autoplot.marssMLE(amesha1)
+
+amesha1$AICc
+```
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_amesha
+amesha2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+amesha2_CIs <- MARSSparamCIs(amesha2, method="parametric", nboot=1000)
+amesha2_CIs
+ 
+MARSS::autoplot.marssMLE(amesha2)
+
+amesha2$AICc
+```
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_amesha
+amesha3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+amesha3_CIs <- MARSSparamCIs(amesha3, method="parametric", nboot=1000)
+amesha3_CIs
+
+MARSS::autoplot.marssMLE(amesha3)
+
+amesha3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_amesha
+amesha4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+amesha4_CIs <- MARSSparamCIs(amesha4, method="parametric", nboot=1000)
+amesha4_CIs
+
+MARSS::autoplot.marssMLE(amesha4)
+
+amesha4$AICc
+```
+
+```{r}
+amesha0$AICc
+amesha1$AICc
+amesha2$AICc
+amesha3$AICc
+amesha4$AICc
+```
+
+
+## STRBAS
+```{r}
+# strbas time series dataframe
+df0_strbas <- df0_logcpue %>% filter(Species=="STRBASAge0")
+
+# log cpue dataframe
+df0_logcpue_strbas <- df0_strbas[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_strbas <- df0_strbas[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_strbas$region_gear
+R1
+
+A1 <- df0_metadata_strbas$region_gear
+A1
+
+Q1 <- df0_metadata_strbas$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_strbas$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 25, 25)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_strbas
+strbas0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+strbas0_CIs <- MARSSparamCIs(strbas0, method="parametric", nboot=1000)
+strbas0_CIs
+
+MARSS::autoplot.marssMLE(strbas0)
+
+strbas0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 25, 25)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_strbas
+strbas1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+strbas1_CIs <- MARSSparamCIs(strbas1, method="parametric", nboot=1000)
+strbas1_CIs
+ 
+MARSS::autoplot.marssMLE(strbas1)
+
+strbas1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 25, 25)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_strbas
+strbas2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+strbas2_CIs <- MARSSparamCIs(strbas2, method="parametric", nboot=1000)
+strbas2_CIs
+
+MARSS::autoplot.marssMLE(strbas2)
+
+strbas2$AICc
+```
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 25, 25)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_strbas
+strbas3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+strbas3_CIs <- MARSSparamCIs(strbas3, method="parametric", nboot=1000)
+strbas3_CIs
+
+MARSS::autoplot.marssMLE(strbas3)
+
+strbas3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 25, 25)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_strbas
+strbas4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+strbas4_CIs <- MARSSparamCIs(strbas4, method="parametric", nboot=1000)
+strbas4_CIs
+
+MARSS::autoplot.marssMLE(strbas4)
+
+strbas4_CIs$AICc
+```
+
+```{r}
+strbas0$AICc
+strbas1$AICc
+strbas2$AICc
+strbas3$AICc
+strbas4$AICc
+```
+
+
+## JACKSM
+```{r}
+# jacksm time series dataframe
+df0_jacksm <- df0_logcpue %>% filter(Species=="JACKSMAge0")
+
+# log cpue dataframe
+df0_logcpue_jacksm <- df0_jacksm[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_jacksm <- df0_jacksm[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_jacksm$region_gear
+R1
+
+A1 <- df0_metadata_jacksm$region_gear
+A1
+
+Q1 <- df0_metadata_jacksm$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_jacksm$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 19, 19)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_jacksm
+jacksm0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+jacksm0_CIs <- MARSSparamCIs(jacksm0, method="parametric", nboot=1000)
+jacksm0_CIs
+
+MARSS::autoplot.marssMLE(jacksm0)
+
+jacksm0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 19, 19)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_jacksm
+jacksm1 <- MARSS(dat, model=model.list, control=list(maxit=10000))
+jacksm1_CIs <- MARSSparamCIs(jacksm1, method="parametric", nboot=1000)
+jacksm1_CIs
+ 
+MARSS::autoplot.marssMLE(jacksm1)
+
+jacksm1$AICc
+```
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 19, 19)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_jacksm
+jacksm2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+jacksm2_CIs <- MARSSparamCIs(jacksm2, method="parametric", nboot=1000)
+jacksm2_CIs
+ 
+MARSS::autoplot.marssMLE(jacksm2)
+
+jacksm2$AICc
+```
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 19, 19)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_jacksm
+jacksm3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+jacksm3_CIs <- MARSSparamCIs(jacksm3, method="parametric", nboot=1000)
+jacksm3_CIs
+
+MARSS::autoplot.marssMLE(jacksm3)
+
+jacksm3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 19, 19)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_jacksm
+jacksm4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+jacksm4_CIs <- MARSSparamCIs(jacksm4, method="parametric", nboot=1000)
+jacksm4_CIs
+
+MARSS::autoplot.marssMLE(jacksm4)
+
+jacksm4$AICc
+```
+
+```{r}
+jacksm0$AICc
+jacksm1$AICc
+jacksm2$AICc
+jacksm3$AICc
+jacksm4$AICc
+```
+
+
+## CALTON
+```{r}
+# calton time series dataframe
+df0_calton <- df0_logcpue %>% filter(Species=="CALTONAge0")
+
+# log cpue dataframe
+df0_logcpue_calton <- df0_calton[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_calton <- df0_calton[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_calton$region_gear
+R1
+
+A1 <- df0_metadata_calton$region_gear
+A1
+
+Q1 <- df0_metadata_calton$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_calton$region %>% as.factor()
+Z1
+```
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 8, 8)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 2, 2)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_calton
+calton0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+calton0_CIs <- MARSSparamCIs(calton0, method="parametric", nboot=1000)
+calton0_CIs
+
+MARSS::autoplot.marssMLE(calton0)
+
+calton0$AICc
+```
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 8, 8)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_calton
+calton1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+calton1_CIs <- MARSSparamCIs(calton1, method="parametric", nboot=1000)
+calton1_CIs
+
+MARSS::autoplot.marssMLE(calton1)
+
+calton1$AICc
+```
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 8, 8)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_calton
+calton2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+calton2_CIs <- MARSSparamCIs(calton2, method="parametric", nboot=1000)
+calton2_CIs
+
+MARSS::autoplot.marssMLE(calton2)
+
+calton2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 8, 8)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_calton
+calton3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+calton3_CIs <- MARSSparamCIs(calton3, method="parametric", nboot=1000)
+calton3_CIs
+
+MARSS::autoplot.marssMLE(calton3)
+
+calton3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 8, 8)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_calton
+calton4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+calton4_CIs <- MARSSparamCIs(calton4, method="parametric", nboot=1000)
+calton4_CIs
+
+MARSS::autoplot.marssMLE(calton4)
+
+calton4$AICc
+```
+
+```{r}
+calton0$AICc
+calton1$AICc
+calton2$AICc
+calton3$AICc
+calton4$AICc
+```
+
+
+## PLAMID
+```{r}
+# plamid time series dataframe
+df0_plamid <- df0_logcpue %>% filter(Species=="PLAMIDAge0")
+
+# log cpue dataframe
+df0_logcpue_plamid <- df0_plamid[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_plamid <- df0_plamid[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_plamid$region_gear
+R1
+
+A1 <- df0_metadata_plamid$region_gear
+A1
+
+Q1 <- df0_metadata_plamid$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_plamid$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 23, 23)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 4, 4)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_plamid
+plamid0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+plamid0_CIs <- MARSSparamCIs(plamid0, method="parametric", nboot=1000)
+plamid0_CIs
+
+MARSS::autoplot.marssMLE(plamid0)
+
+plamid0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 23, 23)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_plamid
+plamid1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+plamid1_CIs <- MARSSparamCIs(plamid1, method="parametric", nboot=1000)
+plamid1_CIs
+
+MARSS::autoplot.marssMLE(plamid1)
+
+plamid1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 23, 23)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_plamid
+plamid2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+plamid2_CIs <- MARSSparamCIs(plamid2, method="parametric", nboot=1000)
+plamid2_CIs
+ 
+MARSS::autoplot.marssMLE(plamid2)
+
+plamid2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 23, 23)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_plamid
+plamid3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+plamid3_CIs <- MARSSparamCIs(plamid3, method="parametric", nboot=1000)
+plamid3_CIs
+
+MARSS::autoplot.marssMLE(plamid3)
+
+plamid3$AICc
+```
+
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 23, 23)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_plamid
+plamid4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+plamid4_CIs <- MARSSparamCIs(plamid4, method="parametric", nboot=1000)
+plamid4_CIs
+
+MARSS::autoplot.marssMLE(plamid4)
+
+plamid4$AICc
+```
+
+```{r}
+plamid0$AICc
+plamid1$AICc
+plamid2$AICc
+plamid3$AICc
+plamid4$AICc
+```
+
+
+
+## SHIPER
+```{r}
+# shiper time series dataframe
+df0_shiper <- df0_logcpue %>% filter(Species=="SHIPERAge0")
+
+# log cpue dataframe
+df0_logcpue_shiper <- df0_shiper[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_shiper <- df0_shiper[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_shiper$region_gear
+R1
+
+A1 <- df0_metadata_shiper$region_gear
+A1
+
+Q1 <- df0_metadata_shiper$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_shiper$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_shiper
+shiper0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+shiper0_CIs <- MARSSparamCIs(shiper0, method="parametric", nboot=1000)
+shiper0_CIs
+
+MARSS::autoplot.marssMLE(shiper0)
+
+shiper0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_shiper
+shiper1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+shiper1_CIs <- MARSSparamCIs(shiper1, method="parametric", nboot=1000)
+shiper1_CIs
+
+MARSS::autoplot.marssMLE(shiper1)
+
+shiper1$AICc
+```
+
+
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_shiper
+shiper2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+shiper2_CIs <- MARSSparamCIs(shiper2, method="parametric", nboot=1000)()
+shiper2_CIs
+
+MARSS::autoplot.marssMLE(shiper2)
+
+shiper2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_shiper
+shiper3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+shiper3_CIs <- MARSSparamCIs(shiper3, method="parametric", nboot=1000)
+shiper3_CIs
+
+MARSS::autoplot.marssMLE(shiper3)
+
+shiper3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_shiper
+shiper4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+shiper4_CIs <- MARSSparamCIs(shiper4, method="parametric", nboot=1000)
+shiper4_CIs
+
+MARSS::autoplot.marssMLE(shiper4)
+
+shiper4$AICc
+```
+
+```{r}
+shiper0$AICc
+shiper1$AICc
+shiper2$AICc
+shiper3$AICc
+shiper4$AICc
+```
+
+
+## WHICRO
+```{r}
+# whicro time series dataframe
+df0_whicro <- df0_logcpue %>% filter(Species=="WHICROAge0")
+
+# log cpue dataframe
+df0_logcpue_whicro <- df0_whicro[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_whicro <- df0_whicro[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_whicro$region_gear
+R1
+
+A1 <- df0_metadata_whicro$region_gear
+A1
+
+Q1 <- df0_metadata_whicro$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_whicro$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_whicro
+whicro0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+whicro0_CIs <- MARSSparamCIs(whicro0, method="parametric", nboot=1000)
+whicro0_CIs
+
+MARSS::autoplot.marssMLE(whicro0)
+
+whicro0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_whicro
+whicro1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+whicro1_CIs <- MARSSparamCIs(whicro1, method="parametric", nboot=1000)
+whicro1_CIs
+
+MARSS::autoplot.marssMLE(whicro1)
+
+whicro1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_whicro
+whicro2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+whicro2_CIs <- MARSSparamCIs(whicro2, method="parametric", nboot=1000)
+whicro2_CIs
+
+MARSS::autoplot.marssMLE(whicro2)
+
+whicro2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_whicro
+whicro3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+whicro3_CIs <- MARSSparamCIs(whicro3, method="parametric", nboot=1000)
+whicro3_CIs
+
+MARSS::autoplot.marssMLE(whicro3)
+
+whicro3$AICc
+```
+
+
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_whicro
+whicro4 <- MARSS(dat, model=model.list, control=list(maxit=5000))
+whicro4_CIs <- MARSSparamCIs(whicro4, method="parametric", nboot=1000)
+whicro4_CIs
+
+MARSS::autoplot.marssMLE(whicro4)
+
+whicro4$AICc
+```
+
+```{r}
+whicro0$AICc
+whicro1$AICc
+whicro2$AICc
+whicro3$AICc
+whicro4$AICc
+```
+
+
+## BROROC
+```{r}
+# broroc time series dataframe
+df0_broroc <- df0_logcpue %>% filter(Species=="BROROCAge0")
+
+# log cpue dataframe
+df0_logcpue_broroc <- df0_broroc[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_broroc <- df0_broroc[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_broroc$region_gear
+R1
+
+A1 <- df0_metadata_broroc$region_gear
+A1
+
+Q1 <- df0_metadata_broroc$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_broroc$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 2, 2)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 2, 2)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_broroc
+broroc0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+broroc0_CIs <- MARSSparamCIs(broroc0, method="parametric", nboot=1000)
+broroc0_CIs
+
+MARSS::autoplot.marssMLE(broroc0)
+
+broroc0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 2, 2)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_broroc
+broroc1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+broroc1_CIs <- MARSSparamCIs(broroc1, method="parametric", nboot=1000)
+broroc1_CIs
+ 
+MARSS::autoplot.marssMLE(broroc1)
+
+broroc1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 2, 2)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_broroc
+broroc2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+broroc2_CIs <- MARSSparamCIs(broroc2, method="parametric", nboot=1000)
+broroc2_CIs
+
+MARSS::autoplot.marssMLE(broroc2)
+
+broroc2$AICc
+```
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 2, 2)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_broroc
+broroc3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+broroc3_CIs <- MARSSparamCIs(broroc3, method="parametric", nboot=1000)
+broroc3_CIs
+
+MARSS::autoplot.marssMLE(broroc3)
+
+broroc3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 2, 2)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_broroc
+broroc4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+broroc4_CIs <- MARSSparamCIs(broroc4, method="parametric", nboot=1000)
+broroc4_CIs
+
+MARSS::autoplot.marssMLE(broroc4)
+
+broroc4$AICc
+```
+
+```{r}
+broroc0$AICc
+broroc1$AICc
+broroc2$AICc
+broroc3$AICc
+broroc4$AICc
+```
+
+
+## WALSUR
+```{r}
+# walsur time series dataframe
+df0_walsur <- df0_logcpue %>% filter(Species=="WALSURAge0")
+
+# log cpue dataframe
+df0_logcpue_walsur <- df0_walsur[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_walsur <- df0_walsur[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_walsur$region_gear
+R1
+
+A1 <- df0_metadata_walsur$region_gear
+A1
+
+Q1 <- df0_metadata_walsur$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_walsur$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 1, 1)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 1, 1)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_walsur
+walsur0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+walsur0_CIs <- MARSSparamCIs(walsur0, method="parametric", nboot=1000)
+walsur0_CIs
+
+MARSS::autoplot.marssMLE(walsur0)
+
+walsur0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 1, 1)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_walsur
+walsur1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+walsur1_CIs <- MARSSparamCIs(walsur1, method="parametric", nboot=1000)
+walsur1_CIs
+
+MARSS::autoplot.marssMLE(walsur1)
+
+walsur1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 1, 1)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_walsur
+walsur2 <- MARSS(dat, model=model.list, control=list(maxit=5000))
+walsur2_CIs <- MARSSparamCIs(walsur2, method="parametric", nboot=1000)
+walsur2_CIs
+
+MARSS::autoplot.marssMLE(walsur2)
+
+walsur2$AICc
+```
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 1, 1)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_walsur
+walsur3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+walsur3_CIs <- MARSSparamCIs(walsur3, method="parametric", nboot=1000)
+walsur3_CIs
+
+MARSS::autoplot.marssMLE(walsur3)
+
+walsur3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 1, 1)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_walsur
+walsur4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+walsur4_CIs <- MARSSparamCIs(walsur4, method="parametric", nboot=1000)
+walsur4_CIs
+
+MARSS::autoplot.marssMLE(walsur4)
+
+walsur4$AICc
+```
+
+```{r}
+walsur0$AICc
+walsur1$AICc
+walsur2$AICc
+walsur3$AICc
+walsur4$AICc
+```
+
+
+## SPESAN
+```{r}
+# spesan time series dataframe
+df0_spesan <- df0_logcpue %>% filter(Species=="SPESANAge0")
+
+# log cpue dataframe
+df0_logcpue_spesan <- df0_spesan[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_spesan <- df0_spesan[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_spesan$region_gear
+R1
+
+A1 <- df0_metadata_spesan$region_gear
+A1
+
+Q1 <- df0_metadata_spesan$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_spesan$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 20, 20)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_spesan
+spesan0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+spesan0_CIs <- MARSSparamCIs(spesan0, method="parametric", nboot=1000)
+spesan0_CIs
+
+MARSS::autoplot.marssMLE(spesan0)
+
+spesan0$AICc
+```
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 20, 20)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_spesan
+spesan1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+spesan1_CIs <- MARSSparamCIs(spesan1, method="parametric", nboot=1000)
+spesan1_CIs
+
+MARSS::autoplot.marssMLE(spesan1)
+
+spesan1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 20, 20)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_spesan
+spesan2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+spesan2_CIs <- MARSSparamCIs(spesan2, method="parametric", nboot=1000)
+spesan2_CIs
+
+MARSS::autoplot.marssMLE(spesan2)
+
+spesan2$AICc
+```
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 20, 20)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_spesan
+spesan3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+spesan3_CIs <- MARSSparamCIs(spesan3, method="parametric", nboot=1000)
+spesan3_CIs
+
+MARSS::autoplot.marssMLE(spesan3)
+
+spesan3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 20, 20)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_spesan
+spesan4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+spesan4_CIs <- MARSSparamCIs(spesan4, method="parametric", nboot=1000)
+spesan4_CIs
+
+MARSS::autoplot.marssMLE(spesan4)
+
+spesan4$AICc
+```
+
+```{r}
+spesan0$AICc
+spesan1$AICc
+spesan2$AICc
+spesan3$AICc
+spesan4$AICc
+```
+
+
+## PACSSC
+```{r}
+# pacssc time series dataframe
+df0_pacssc <- df0_logcpue %>% filter(Species=="PACSSCAge0")
+
+# log cpue dataframe
+df0_logcpue_pacssc <- df0_pacssc[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_pacssc <- df0_pacssc[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_pacssc$region_gear
+R1
+
+A1 <- df0_metadata_pacssc$region_gear
+A1
+
+Q1 <- df0_metadata_pacssc$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_pacssc$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 33, 33)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 5, 5)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacssc
+pacssc0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacssc0_CIs <- MARSSparamCIs(pacssc0, method="parametric", nboot=1000)
+pacssc0_CIs
+
+MARSS::autoplot.marssMLE(pacssc0)
+
+pacssc0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 33, 33)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacssc
+pacssc1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacssc1_CIs <- MARSSparamCIs(pacssc1, method="parametric", nboot=1000)
+pacssc1_CIs
+
+MARSS::autoplot.marssMLE(pacssc1)
+
+pacssc1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 33, 33)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacssc
+pacssc2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacssc2_CIs <- MARSSparamCIs(pacssc2, method="parametric", nboot=1000)
+pacssc2_CIs
+
+MARSS::autoplot.marssMLE(pacssc2)
+
+pacssc2$AICc
+```
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 33, 33)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacssc
+pacssc3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacssc3_CIs <- MARSSparamCIs(pacssc3, method="parametric", nboot=1000)
+pacssc3_CIs
+
+MARSS::autoplot.marssMLE(pacssc3)
+
+pacssc3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 33, 33)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_pacssc
+pacssc4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+pacssc4_CIs <- MARSSparamCIs(pacssc4, method="parametric", nboot=1000)
+pacssc4_CIs
+
+MARSS::autoplot.marssMLE(pacssc4)
+
+pacssc4$AICc
+```
+
+```{r}
+pacssc0$AICc
+pacssc1$AICc
+pacssc2$AICc
+pacssc3$AICc
+pacssc4$AICc
+```
+
+
+## YELGOB
+```{r}
+# yelgob time series dataframe
+df0_yelgob <- df0_logcpue %>% filter(Species=="YELGOBAge0")
+
+# log cpue dataframe
+df0_logcpue_yelgob <- df0_yelgob[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_yelgob <- df0_yelgob[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_yelgob$region_gear
+R1
+
+A1 <- df0_metadata_yelgob$region_gear
+A1
+
+Q1 <- df0_metadata_yelgob$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_yelgob$region %>% as.factor()
+Z1
+```
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_yelgob
+yelgob0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+yelgob0_CIs <- MARSSparamCIs(yelgob0, method="parametric", nboot=1000)
+yelgob0_CIs
+ 
+MARSS::autoplot.marssMLE(yelgob0)
+
+yelgob0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_yelgob
+yelgob1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+yelgob1_CIs <- MARSSparamCIs(yelgob1, method="parametric", nboot=1000)
+yelgob1_CIs
+
+MARSS::autoplot.marssMLE(yelgob1)
+
+yelgob1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_yelgob
+yelgob2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+yelgob2_CIs <- MARSSparamCIs(yelgob2, method="parametric", nboot=1000)
+yelgob2_CIs
+
+MARSS::autoplot.marssMLE(yelgob2)
+
+yelgob2$AICc
+```
+
+
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_yelgob
+yelgob3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+yelgob3_CIs <- MARSSparamCIs(yelgob3, method="parametric", nboot=1000)
+yelgob3_CIs
+
+MARSS::autoplot.marssMLE(yelgob3)
+
+yelgob3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 16, 16)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_yelgob
+yelgob4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+yelgob4_CIs <- MARSSparamCIs(yelgob4, method="parametric", nboot=1000)
+yelgob4_CIs
+
+MARSS::autoplot.marssMLE(yelgob4)
+
+yelgob4$AICc
+```
+
+```{r}
+yelgob0$AICc
+yelgob1$AICc
+yelgob2$AICc
+yelgob3$AICc
+yelgob4$AICc
+```
+
+
+## STAFLO
+```{r}
+# staflo time series dataframe
+df0_staflo <- df0_logcpue %>% filter(Species=="STAFLOAge0")
+
+# log cpue dataframe
+df0_logcpue_staflo <- df0_staflo[,6:44]%>% as.matrix()
+
+# metadata - region and gear type
+df0_metadata_staflo <- df0_staflo[,c(2,4,5)]
+
+# model parameters
+R1 <- df0_metadata_staflo$region_gear
+R1
+
+A1 <- df0_metadata_staflo$region_gear
+A1
+
+Q1 <- df0_metadata_staflo$region %>% unique()
+Q1
+
+Z1 <- df0_metadata_staflo$region %>% as.factor()
+Z1
+```
+
+
+### model 0
+```{r}
+# gear types
+R_temp <- matrix(list(0), 9, 9)
+diag(R_temp) <- R1
+R_temp
+
+Q_temp <- matrix(list(0), 3, 3)
+diag(Q_temp) <- Q1
+Q_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- Q_temp
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_staflo
+staflo0 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+staflo0_CIs <- MARSSparamCIs(staflo0, method="parametric", nboot=1000)
+staflo0_CIs
+
+MARSS::autoplot.marssMLE(staflo0)
+
+staflo0$AICc
+```
+
+
+### model 1
+```{r}
+# gear types
+R_temp <- matrix(list(0), 9, 9)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_staflo
+staflo1 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+staflo1_CIs <- MARSSparamCIs(staflo1, method="parametric", nboot=1000)
+staflo1_CIs
+
+MARSS::autoplot.marssMLE(staflo1)
+
+staflo1$AICc
+```
+
+### model 2
+```{r}
+# gear types
+R_temp <- matrix(list(0), 9, 9)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_staflo
+staflo2 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+staflo2_CIs <- MARSSparamCIs(staflo2, method="parametric", nboot=1000)
+staflo2_CIs
+
+MARSS::autoplot.marssMLE(staflo2)
+
+staflo2$AICc
+```
+
+### model 3
+```{r}
+# gear types
+R_temp <- matrix(list(0), 9, 9)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- sst_ao_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_staflo
+staflo3 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+staflo3_CIs <- MARSSparamCIs(staflo3, method="parametric", nboot=1000)
+staflo3_CIs
+
+MARSS::autoplot.marssMLE(staflo3)
+
+staflo3$AICc
+```
+
+### model 4
+```{r}
+# gear types
+R_temp <- matrix(list(0), 9, 9)
+diag(R_temp) <- R1
+R_temp
+
+A_temp <- matrix(A1)
+A_temp
+
+# convention: name model.parameter
+model.A <- A_temp  
+model.U <- "unequal" 
+model.B <- "identity"
+model.Q <- "unconstrained"
+model.R <- R_temp
+model.C <- "unequal"
+model.c <- flow_sst_matrix
+model.Z <- Z1 
+
+
+model.list <- list(B=model.B,
+                   U=model.U,
+                   Q=model.Q,
+                   R=model.R, 
+                   A=model.A,
+                   C=model.C,
+                   c=model.c,
+                   Z=model.Z)
+
+# fit age-0 MARSS model
+dat <- df0_logcpue_staflo
+staflo4 <- MARSS(dat, model=model.list, control=list(maxit=1000))
+staflo4_CIs <- MARSSparamCIs(staflo4, method="parametric", nboot=1000)
+staflo4_CIs
+ 
+MARSS::autoplot.marssMLE(staflo4)
+
+staflo4$AICc
+```
+
+```{r}
+staflo0$AICc
+staflo1$AICc
+staflo2$AICc
+staflo3$AICc
+staflo4$AICc
+```
+
+# Model comparison
+
+## LONSME
+```{r}
+lonsmecomp0=data.frame(
+          logLik=lonsme0$logLik, AICc=lonsme0$AICc, num.param=lonsme0$num.params,
+          num.iter=lonsme0$numIter, converged=!lonsme0$convergence,
+          stringsAsFactors = FALSE)
+
+lonsmecomp1=data.frame(
+          logLik=lonsme1$logLik, AICc=lonsme1$AICc, num.param=lonsme1$num.params,
+          num.iter=lonsme1$numIter, converged=!lonsme1$convergence,
+          stringsAsFactors = FALSE)
+
+lonsmecomp2=data.frame(
+          logLik=lonsme2$logLik, AICc=lonsme2$AICc, num.param=lonsme2$num.params,
+          num.iter=lonsme2$numIter, converged=!lonsme2$convergence,
+          stringsAsFactors = FALSE)
+
+lonsmecomp3=data.frame(
+          logLik=lonsme3$logLik, AICc=lonsme3$AICc, num.param=lonsme3$num.params,
+          num.iter=lonsme3$numIter, converged=!lonsme3$convergence,
+          stringsAsFactors = FALSE)
+
+lonsmecomp4=data.frame(
+          logLik=lonsme4$logLik, AICc=lonsme4$AICc, num.param=lonsme4$num.params,
+          num.iter=lonsme4$numIter, converged=!lonsme4$convergence,
+          stringsAsFactors = FALSE)
+
+lonsmecomp4b=data.frame(
+          logLik=lonsme4b$logLik, AICc=lonsme4b$AICc, num.param=lonsme4b$num.params,
+          num.iter=lonsme4b$numIter, converged=!lonsme4b$convergence,
+          stringsAsFactors = FALSE)
+
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+lonsme_output <- rbind(lonsmecomp0, lonsmecomp1, lonsmecomp2, lonsmecomp3, lonsmecomp4, lonsmecomp4b)
+lonsme_output <- cbind(model_names,lonsme_output) %>% 
+  arrange(desc(-AICc))
+
+lonsme.tab0=NULL
+min.AICc=order(lonsme_output$AICc)
+lonsme.tab0=lonsme_output[min.AICc,]
+
+lonsme.tab0=cbind(lonsme.tab0,
+           delta.AICc=lonsme.tab0$AICc-lonsme.tab0$AICc[1])
+
+lonsme.tab0=cbind(lonsme.tab0, 
+           rel.like=exp(-1*lonsme.tab0$delta.AICc/2))
+
+lonsme.tab0=cbind(lonsme.tab0,
+          AIC.weight = lonsme.tab0$rel.like/sum(lonsme.tab0$rel.like))
+
+lonsme.tab0$delta.AICc = round(lonsme.tab0$delta.AICc, digits=2)
+lonsme.tab0$AIC.weight = round(lonsme.tab0$AIC.weight, digits=3)
+lonsme.tab0$Species = "LONSME"
+
+lonsme.tab0
+```
+
+
+## PACHER
+```{r}
+pachercomp0=data.frame(
+          logLik=pacher0$logLik, AICc=pacher0$AICc, num.param=pacher0$num.params,
+          num.iter=pacher0$numIter, converged=!pacher0$convergence,
+          stringsAsFactors = FALSE)
+
+pachercomp1=data.frame(
+          logLik=pacher1$logLik, AICc=pacher1$AICc, num.param=pacher1$num.params,
+          num.iter=pacher1$numIter, converged=!pacher1$convergence,
+          stringsAsFactors = FALSE)
+
+pachercomp2=data.frame(
+          logLik=pacher2$logLik, AICc=pacher2$AICc, num.param=pacher2$num.params,
+          num.iter=pacher2$numIter, converged=!pacher2$convergence,
+          stringsAsFactors = FALSE)
+
+pachercomp3=data.frame(
+          logLik=pacher3$logLik, AICc=pacher3$AICc, num.param=pacher3$num.params,
+          num.iter=pacher3$numIter, converged=!pacher3$convergence,
+          stringsAsFactors = FALSE)
+
+pachercomp4=data.frame(
+          logLik=pacher4$logLik, AICc=pacher4$AICc, num.param=pacher4$num.params,
+          num.iter=pacher4$numIter, converged=!pacher4$convergence,
+          stringsAsFactors = FALSE)
+
+pachercomp4b=data.frame(
+          logLik=pacher4b$logLik, AICc=pacher4b$AICc, num.param=pacher4b$num.params,
+          num.iter=pacher4b$numIter, converged=!pacher4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+pacher_output <- rbind(pachercomp0, pachercomp1, pachercomp2, pachercomp3, pachercomp4, pachercomp4b)
+pacher_output <- cbind(model_names,pacher_output) %>% 
+  arrange(desc(-AICc))
+
+pacher.tab0=NULL
+min.AICc=order(pacher_output$AICc)
+pacher.tab0=pacher_output[min.AICc,]
+
+pacher.tab0=cbind(pacher.tab0,
+           delta.AICc=pacher.tab0$AICc-pacher.tab0$AICc[1])
+
+pacher.tab0=cbind(pacher.tab0, 
+           rel.like=exp(-1*pacher.tab0$delta.AICc/2))
+
+pacher.tab0=cbind(pacher.tab0,
+          AIC.weight = pacher.tab0$rel.like/sum(pacher.tab0$rel.like))
+
+pacher.tab0$delta.AICc = round(pacher.tab0$delta.AICc, digits=2)
+pacher.tab0$AIC.weight = round(pacher.tab0$AIC.weight, digits=3)
+pacher.tab0$Species = "PACHER"
+
+pacher.tab0
+```
+
+
+## ENGSOL
+```{r}
+engsolcomp0=data.frame(
+          logLik=engsol0$logLik, AICc=engsol0$AICc, num.param=engsol0$num.params,
+          num.iter=engsol0$numIter, converged=!engsol0$convergence,
+          stringsAsFactors = FALSE)
+
+engsolcomp1=data.frame(
+          logLik=engsol1$logLik, AICc=engsol1$AICc, num.param=engsol1$num.params,
+          num.iter=engsol1$numIter, converged=!engsol1$convergence,
+          stringsAsFactors = FALSE)
+
+engsolcomp2=data.frame(
+          logLik=engsol2$logLik, AICc=engsol2$AICc, num.param=engsol2$num.params,
+          num.iter=engsol2$numIter, converged=!engsol2$convergence,
+          stringsAsFactors = FALSE)
+
+engsolcomp3=data.frame(
+          logLik=engsol3$logLik, AICc=engsol3$AICc, num.param=engsol3$num.params,
+          num.iter=engsol3$numIter, converged=!engsol3$convergence,
+          stringsAsFactors = FALSE)
+
+engsolcomp4=data.frame(
+          logLik=engsol4$logLik, AICc=engsol4$AICc, num.param=engsol4$num.params,
+          num.iter=engsol4$numIter, converged=!engsol4$convergence,
+          stringsAsFactors = FALSE)
+
+engsolcomp4b=data.frame(
+          logLik=engsol4b$logLik, AICc=engsol4b$AICc, num.param=engsol4b$num.params,
+          num.iter=engsol4b$numIter, converged=!engsol4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+engsol_output <- rbind(engsolcomp0, engsolcomp1, engsolcomp2, engsolcomp3, engsolcomp4, engsolcomp4b)
+engsol_output <- cbind(model_names,engsol_output) %>% 
+  arrange(desc(-AICc))
+
+engsol.tab0=NULL
+min.AICc=order(engsol_output$AICc)
+engsol.tab0=engsol_output[min.AICc,]
+
+engsol.tab0=cbind(engsol.tab0,
+           delta.AICc=engsol.tab0$AICc-engsol.tab0$AICc[1])
+
+engsol.tab0=cbind(engsol.tab0, 
+           rel.like=exp(-1*engsol.tab0$delta.AICc/2))
+
+engsol.tab0=cbind(engsol.tab0,
+          AIC.weight = engsol.tab0$rel.like/sum(engsol.tab0$rel.like))
+
+engsol.tab0$delta.AICc = round(engsol.tab0$delta.AICc, digits=2)
+engsol.tab0$AIC.weight = round(engsol.tab0$AIC.weight, digits=3)
+engsol.tab0$Species = "ENGSOL"
+
+engsol.tab0
+```
+
+## BAYGOB
+```{r}
+baygobcomp0=data.frame(
+          logLik=baygob0$logLik, AICc=baygob0$AICc, num.param=baygob0$num.params,
+          num.iter=baygob0$numIter, converged=!baygob0$convergence,
+          stringsAsFactors = FALSE)
+
+baygobcomp1=data.frame(
+          logLik=baygob1$logLik, AICc=baygob1$AICc, num.param=baygob1$num.params,
+          num.iter=baygob1$numIter, converged=!baygob1$convergence,
+          stringsAsFactors = FALSE)
+
+baygobcomp2=data.frame(
+          logLik=baygob2$logLik, AICc=baygob2$AICc, num.param=baygob2$num.params,
+          num.iter=baygob2$numIter, converged=!baygob2$convergence,
+          stringsAsFactors = FALSE)
+
+baygobcomp3=data.frame(
+          logLik=baygob3$logLik, AICc=baygob3$AICc, num.param=baygob3$num.params,
+          num.iter=baygob3$numIter, converged=!baygob3$convergence,
+          stringsAsFactors = FALSE)
+
+baygobcomp4=data.frame(
+          logLik=baygob4$logLik, AICc=baygob4$AICc, num.param=baygob4$num.params,
+          num.iter=baygob4$numIter, converged=!baygob4$convergence,
+          stringsAsFactors = FALSE)
+
+baygobcomp4b=data.frame(
+          logLik=baygob4b$logLik, AICc=baygob4b$AICc, num.param=baygob4b$num.params,
+          num.iter=baygob4b$numIter, converged=!baygob4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+baygob_output <- rbind(baygobcomp0, baygobcomp1, baygobcomp2, baygobcomp3, baygobcomp4, baygobcomp4b)
+baygob_output <- cbind(model_names,baygob_output) %>% 
+  arrange(desc(-AICc))
+
+baygob.tab0=NULL
+min.AICc=order(baygob_output$AICc)
+baygob.tab0=baygob_output[min.AICc,]
+
+baygob.tab0=cbind(baygob.tab0,
+           delta.AICc=baygob.tab0$AICc-baygob.tab0$AICc[1])
+
+baygob.tab0=cbind(baygob.tab0, 
+           rel.like=exp(-1*baygob.tab0$delta.AICc/2))
+
+baygob.tab0=cbind(baygob.tab0,
+          AIC.weight = baygob.tab0$rel.like/sum(baygob.tab0$rel.like))
+
+baygob.tab0$delta.AICc = round(baygob.tab0$delta.AICc, digits=2)
+baygob.tab0$AIC.weight = round(baygob.tab0$AIC.weight, digits=3)
+baygob.tab0$Species = "BAYGOB"
+
+baygob.tab0
+```
+
+## NORANC
+```{r}
+noranccomp0=data.frame(
+          logLik=noranc0$logLik, AICc=noranc0$AICc, num.param=noranc0$num.params,
+          num.iter=noranc0$numIter, converged=!noranc0$convergence,
+          stringsAsFactors = FALSE)
+
+noranccomp1=data.frame(
+          logLik=noranc1$logLik, AICc=noranc1$AICc, num.param=noranc1$num.params,
+          num.iter=noranc1$numIter, converged=!noranc1$convergence,
+          stringsAsFactors = FALSE)
+
+noranccomp2=data.frame(
+          logLik=noranc2$logLik, AICc=noranc2$AICc, num.param=noranc2$num.params,
+          num.iter=noranc2$numIter, converged=!noranc2$convergence,
+          stringsAsFactors = FALSE)
+
+noranccomp3=data.frame(
+          logLik=noranc3$logLik, AICc=noranc3$AICc, num.param=noranc3$num.params,
+          num.iter=noranc3$numIter, converged=!noranc3$convergence,
+          stringsAsFactors = FALSE)
+
+noranccomp4=data.frame(
+          logLik=noranc4$logLik, AICc=noranc4$AICc, num.param=noranc4$num.params,
+          num.iter=noranc4$numIter, converged=!noranc4$convergence,
+          stringsAsFactors = FALSE)
+
+noranccomp4b=data.frame(
+          logLik=noranc4b$logLik, AICc=noranc4b$AICc, num.param=noranc4b$num.params,
+          num.iter=noranc4b$numIter, converged=!noranc4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+noranc_output <- rbind(noranccomp0, noranccomp1, noranccomp2, noranccomp3, noranccomp4, noranccomp4)
+noranc_output <- cbind(model_names,noranc_output) %>% 
+  arrange(desc(-AICc))
+
+noranc.tab0=NULL
+min.AICc=order(noranc_output$AICc)
+noranc.tab0=noranc_output[min.AICc,]
+
+noranc.tab0=cbind(noranc.tab0,
+           delta.AICc=noranc.tab0$AICc-noranc.tab0$AICc[1])
+
+noranc.tab0=cbind(noranc.tab0, 
+           rel.like=exp(-1*noranc.tab0$delta.AICc/2))
+
+noranc.tab0=cbind(noranc.tab0,
+          AIC.weight = noranc.tab0$rel.like/sum(noranc.tab0$rel.like))
+
+noranc.tab0$delta.AICc = round(noranc.tab0$delta.AICc, digits=2)
+noranc.tab0$AIC.weight = round(noranc.tab0$AIC.weight, digits=3)
+noranc.tab0$Species = "NORANC"
+
+noranc.tab0
+```
+
+## AMESHA
+```{r}
+ameshacomp0=data.frame(
+          logLik=amesha0$logLik, AICc=amesha0$AICc, num.param=amesha0$num.params,
+          num.iter=amesha0$numIter, converged=!amesha0$convergence,
+          stringsAsFactors = FALSE)
+
+ameshacomp1=data.frame(
+          logLik=amesha1$logLik, AICc=amesha1$AICc, num.param=amesha1$num.params,
+          num.iter=amesha1$numIter, converged=!amesha1$convergence,
+          stringsAsFactors = FALSE)
+
+ameshacomp2=data.frame(
+          logLik=amesha2$logLik, AICc=amesha2$AICc, num.param=amesha2$num.params,
+          num.iter=amesha2$numIter, converged=!amesha2$convergence,
+          stringsAsFactors = FALSE)
+
+ameshacomp3=data.frame(
+          logLik=amesha3$logLik, AICc=amesha3$AICc, num.param=amesha3$num.params,
+          num.iter=amesha3$numIter, converged=!amesha3$convergence,
+          stringsAsFactors = FALSE)
+
+ameshacomp4=data.frame(
+          logLik=amesha4$logLik, AICc=amesha4$AICc, num.param=amesha4$num.params,
+          num.iter=amesha4$numIter, converged=!amesha4$convergence,
+          stringsAsFactors = FALSE)
+
+ameshacomp4b=data.frame(
+          logLik=amesha4b$logLik, AICc=amesha4b$AICc, num.param=amesha4b$num.params,
+          num.iter=amesha4b$numIter, converged=!amesha4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+amesha_output <- rbind(ameshacomp0, ameshacomp1, ameshacomp2, ameshacomp3, ameshacomp4, ameshacomp4b)
+amesha_output <- cbind(model_names,amesha_output) %>% 
+  arrange(desc(-AICc))
+
+amesha.tab0=NULL
+min.AICc=order(amesha_output$AICc)
+amesha.tab0=amesha_output[min.AICc,]
+
+amesha.tab0=cbind(amesha.tab0,
+           delta.AICc=amesha.tab0$AICc-amesha.tab0$AICc[1])
+
+amesha.tab0=cbind(amesha.tab0, 
+           rel.like=exp(-1*amesha.tab0$delta.AICc/2))
+
+amesha.tab0=cbind(amesha.tab0,
+          AIC.weight = amesha.tab0$rel.like/sum(amesha.tab0$rel.like))
+
+amesha.tab0$delta.AICc = round(amesha.tab0$delta.AICc, digits=2)
+amesha.tab0$AIC.weight = round(amesha.tab0$AIC.weight, digits=3)
+amesha.tab0$Species = "AMESHA"
+
+amesha.tab0
+```
+
+## STRBAS
+```{r}
+strbascomp0=data.frame(
+          logLik=strbas0$logLik, AICc=strbas0$AICc, num.param=strbas0$num.params,
+          num.iter=strbas0$numIter, converged=!strbas0$convergence,
+          stringsAsFactors = FALSE)
+
+strbascomp1=data.frame(
+          logLik=strbas1$logLik, AICc=strbas1$AICc, num.param=strbas1$num.params,
+          num.iter=strbas1$numIter, converged=!strbas1$convergence,
+          stringsAsFactors = FALSE)
+
+strbascomp2=data.frame(
+          logLik=strbas2$logLik, AICc=strbas2$AICc, num.param=strbas2$num.params,
+          num.iter=strbas2$numIter, converged=!strbas2$convergence,
+          stringsAsFactors = FALSE)
+
+strbascomp3=data.frame(
+          logLik=strbas3$logLik, AICc=strbas3$AICc, num.param=strbas3$num.params,
+          num.iter=strbas3$numIter, converged=!strbas3$convergence,
+          stringsAsFactors = FALSE)
+
+strbascomp4=data.frame(
+          logLik=strbas4$logLik, AICc=strbas4$AICc, num.param=strbas4$num.params,
+          num.iter=strbas4$numIter, converged=!strbas4$convergence,
+          stringsAsFactors = FALSE)
+
+strbascomp4b=data.frame(
+          logLik=strbas4b$logLik, AICc=strbas4b$AICc, num.param=strbas4b$num.params,
+          num.iter=strbas4b$numIter, converged=!strbas4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+strbas_output <- rbind(strbascomp0, strbascomp1, strbascomp2, strbascomp3, strbascomp4, strbascomp4b)
+strbas_output <- cbind(model_names,strbas_output) %>% 
+  arrange(desc(-AICc))
+
+strbas.tab0=NULL
+min.AICc=order(strbas_output$AICc)
+strbas.tab0=strbas_output[min.AICc,]
+
+strbas.tab0=cbind(strbas.tab0,
+           delta.AICc=strbas.tab0$AICc-strbas.tab0$AICc[1])
+
+strbas.tab0=cbind(strbas.tab0, 
+           rel.like=exp(-1*strbas.tab0$delta.AICc/2))
+
+strbas.tab0=cbind(strbas.tab0,
+          AIC.weight = strbas.tab0$rel.like/sum(strbas.tab0$rel.like))
+
+strbas.tab0$delta.AICc = round(strbas.tab0$delta.AICc, digits=2)
+strbas.tab0$AIC.weight = round(strbas.tab0$AIC.weight, digits=3)
+strbas.tab0$Species = "STRBAS"
+
+strbas.tab0
+```
+
+## JACKSM
+```{r}
+jacksmcomp0=data.frame(
+          logLik=jacksm0$logLik, AICc=jacksm0$AICc, num.param=jacksm0$num.params,
+          num.iter=jacksm0$numIter, converged=!jacksm0$convergence,
+          stringsAsFactors = FALSE)
+
+# jacksmcomp1=data.frame(
+#           logLik=jacksm1$logLik, AICc=jacksm1$AICc, num.param=jacksm1$num.params, #didn't converge
+#           num.iter=jacksm1$numIter, converged=!jacksm1$convergence,
+#           stringsAsFactors = FALSE)
+
+jacksmcomp2=data.frame(
+          logLik=jacksm2$logLik, AICc=jacksm2$AICc, num.param=jacksm2$num.params,
+          num.iter=jacksm2$numIter, converged=!jacksm2$convergence,
+          stringsAsFactors = FALSE)
+
+jacksmcomp3=data.frame(
+          logLik=jacksm3$logLik, AICc=jacksm3$AICc, num.param=jacksm3$num.params,
+          num.iter=jacksm3$numIter, converged=!jacksm3$convergence,
+          stringsAsFactors = FALSE)
+
+jacksmcomp4=data.frame(
+          logLik=jacksm4$logLik, AICc=jacksm4$AICc, num.param=jacksm4$num.params,
+          num.iter=jacksm4$numIter, converged=!jacksm4$convergence,
+          stringsAsFactors = FALSE)
+
+jacksmcomp4b=data.frame(
+          logLik=jacksm4b$logLik, AICc=jacksm4b$AICc, num.param=jacksm4b$num.params,
+          num.iter=jacksm4b$numIter, converged=!jacksm4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+jacksm_output <- rbind(jacksmcomp0, jacksmcomp2, jacksmcomp3, jacksmcomp4, jacksmcomp4b)
+jacksm_output <- cbind(model_names,jacksm_output) %>% 
+  arrange(desc(-AICc))
+
+jacksm.tab0=NULL
+min.AICc=order(jacksm_output$AICc)
+jacksm.tab0=jacksm_output[min.AICc,]
+
+jacksm.tab0=cbind(jacksm.tab0,
+           delta.AICc=jacksm.tab0$AICc-jacksm.tab0$AICc[1])
+
+jacksm.tab0=cbind(jacksm.tab0, 
+           rel.like=exp(-1*jacksm.tab0$delta.AICc/2))
+
+jacksm.tab0=cbind(jacksm.tab0,
+          AIC.weight = jacksm.tab0$rel.like/sum(jacksm.tab0$rel.like))
+
+jacksm.tab0$delta.AICc = round(jacksm.tab0$delta.AICc, digits=2)
+jacksm.tab0$AIC.weight = round(jacksm.tab0$AIC.weight, digits=3)
+jacksm.tab0$Species = "JACKSM"
+
+jacksm.tab0
+```
+
+## CALTON
+```{r}
+caltoncomp0=data.frame(
+          logLik=calton0$logLik, AICc=calton0$AICc, num.param=calton0$num.params,
+          num.iter=calton0$numIter, converged=!calton0$convergence,
+          stringsAsFactors = FALSE)
+
+caltoncomp1=data.frame(
+          logLik=calton1$logLik, AICc=calton1$AICc, num.param=calton1$num.params,
+          num.iter=calton1$numIter, converged=!calton1$convergence,
+          stringsAsFactors = FALSE)
+
+caltoncomp2=data.frame(
+          logLik=calton2$logLik, AICc=calton2$AICc, num.param=calton2$num.params,
+          num.iter=calton2$numIter, converged=!calton2$convergence,
+          stringsAsFactors = FALSE)
+
+caltoncomp3=data.frame(
+          logLik=calton3$logLik, AICc=calton3$AICc, num.param=calton3$num.params,
+          num.iter=calton3$numIter, converged=!calton3$convergence,
+          stringsAsFactors = FALSE)
+
+caltoncomp4=data.frame(
+          logLik=calton4$logLik, AICc=calton4$AICc, num.param=calton4$num.params,
+          num.iter=calton4$numIter, converged=!calton4$convergence,
+          stringsAsFactors = FALSE)
+
+caltoncomp4b=data.frame(
+          logLik=calton4b$logLik, AICc=calton4b$AICc, num.param=calton4b$num.params,
+          num.iter=calton4b$numIter, converged=!calton4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+calton_output <- rbind(caltoncomp0, caltoncomp1, caltoncomp2, caltoncomp3, caltoncomp4, caltoncomp4b)
+calton_output <- cbind(model_names,calton_output) %>% 
+  arrange(desc(-AICc))
+
+calton.tab0=NULL
+min.AICc=order(calton_output$AICc)
+calton.tab0=calton_output[min.AICc,]
+
+calton.tab0=cbind(calton.tab0,
+           delta.AICc=calton.tab0$AICc-calton.tab0$AICc[1])
+
+calton.tab0=cbind(calton.tab0, 
+           rel.like=exp(-1*calton.tab0$delta.AICc/2))
+
+calton.tab0=cbind(calton.tab0,
+          AIC.weight = calton.tab0$rel.like/sum(calton.tab0$rel.like))
+
+calton.tab0$delta.AICc = round(calton.tab0$delta.AICc, digits=2)
+calton.tab0$AIC.weight = round(calton.tab0$AIC.weight, digits=3)
+calton.tab0$Species = "CALTON"
+
+calton.tab0
+```
+
+## PLAMID
+```{r}
+plamidcomp0=data.frame(
+          logLik=plamid0$logLik, AICc=plamid0$AICc, num.param=plamid0$num.params,
+          num.iter=plamid0$numIter, converged=!plamid0$convergence,
+          stringsAsFactors = FALSE)
+
+plamidcomp1=data.frame(
+          logLik=plamid1$logLik, AICc=plamid1$AICc, num.param=plamid1$num.params,
+          num.iter=plamid1$numIter, converged=!plamid1$convergence,
+          stringsAsFactors = FALSE)
+
+plamidcomp2=data.frame(
+          logLik=plamid2$logLik, AICc=plamid2$AICc, num.param=plamid2$num.params,
+          num.iter=plamid2$numIter, converged=!plamid2$convergence,
+          stringsAsFactors = FALSE)
+
+plamidcomp3=data.frame(
+          logLik=plamid3$logLik, AICc=plamid3$AICc, num.param=plamid3$num.params,
+          num.iter=plamid3$numIter, converged=!plamid3$convergence,
+          stringsAsFactors = FALSE)
+
+plamidcomp4=data.frame(
+          logLik=plamid4$logLik, AICc=plamid4$AICc, num.param=plamid4$num.params,
+          num.iter=plamid4$numIter, converged=!plamid4$convergence,
+          stringsAsFactors = FALSE)
+
+plamidcomp4b=data.frame(
+          logLik=plamid4b$logLik, AICc=plamid4b$AICc, num.param=plamid4b$num.params,
+          num.iter=plamid4b$numIter, converged=!plamid4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+plamid_output <- rbind(plamidcomp0, plamidcomp1, plamidcomp2, plamidcomp3, plamidcomp4, plamidcomp4b)
+plamid_output <- cbind(model_names,plamid_output) %>% 
+  arrange(desc(-AICc))
+
+plamid.tab0=NULL
+min.AICc=order(plamid_output$AICc)
+plamid.tab0=plamid_output[min.AICc,]
+
+plamid.tab0=cbind(plamid.tab0,
+           delta.AICc=plamid.tab0$AICc-plamid.tab0$AICc[1])
+
+plamid.tab0=cbind(plamid.tab0, 
+           rel.like=exp(-1*plamid.tab0$delta.AICc/2))
+
+plamid.tab0=cbind(plamid.tab0,
+          AIC.weight = plamid.tab0$rel.like/sum(plamid.tab0$rel.like))
+
+plamid.tab0$delta.AICc = round(plamid.tab0$delta.AICc, digits=2)
+plamid.tab0$AIC.weight = round(plamid.tab0$AIC.weight, digits=3)
+plamid.tab0$Species = "PLAMID"
+
+plamid.tab0
+```
+
+## SHIPER
+```{r}
+shipercomp0=data.frame(
+          logLik=shiper0$logLik, AICc=shiper0$AICc, num.param=shiper0$num.params,
+          num.iter=shiper0$numIter, converged=!shiper0$convergence,
+          stringsAsFactors = FALSE)
+
+shipercomp1=data.frame(
+          logLik=shiper1$logLik, AICc=shiper1$AICc, num.param=shiper1$num.params,
+          num.iter=shiper1$numIter, converged=!shiper1$convergence,
+          stringsAsFactors = FALSE)
+
+shipercomp2=data.frame(
+          logLik=shiper2$logLik, AICc=shiper2$AICc, num.param=shiper2$num.params,
+          num.iter=shiper2$numIter, converged=!shiper2$convergence,
+          stringsAsFactors = FALSE)
+
+shipercomp3=data.frame(
+          logLik=shiper3$logLik, AICc=shiper3$AICc, num.param=shiper3$num.params,
+          num.iter=shiper3$numIter, converged=!shiper3$convergence,
+          stringsAsFactors = FALSE)
+
+shipercomp4=data.frame(
+          logLik=shiper4$logLik, AICc=shiper4$AICc, num.param=shiper4$num.params,
+          num.iter=shiper4$numIter, converged=!shiper4$convergence,
+          stringsAsFactors = FALSE)
+
+shipercomp4b=data.frame(
+          logLik=shiper4b$logLik, AICc=shiper4b$AICc, num.param=shiper4b$num.params,
+          num.iter=shiper4b$numIter, converged=!shiper4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+shiper_output <- rbind(shipercomp0, shipercomp1, shipercomp2, shipercomp3, shipercomp4, shipercomp4b)
+shiper_output <- cbind(model_names,shiper_output) %>% 
+  arrange(desc(-AICc))
+
+shiper.tab0=NULL
+min.AICc=order(shiper_output$AICc)
+shiper.tab0=shiper_output[min.AICc,]
+
+shiper.tab0=cbind(shiper.tab0,
+           delta.AICc=shiper.tab0$AICc-shiper.tab0$AICc[1])
+
+shiper.tab0=cbind(shiper.tab0, 
+           rel.like=exp(-1*shiper.tab0$delta.AICc/2))
+
+shiper.tab0=cbind(shiper.tab0,
+          AIC.weight = shiper.tab0$rel.like/sum(shiper.tab0$rel.like))
+
+shiper.tab0$delta.AICc = round(shiper.tab0$delta.AICc, digits=2)
+shiper.tab0$AIC.weight = round(shiper.tab0$AIC.weight, digits=3)
+shiper.tab0$Species = "SHIPER"
+
+shiper.tab0
+```
+
+## WHICRO
+```{r}
+whicrocomp0=data.frame(
+          logLik=whicro0$logLik, AICc=whicro0$AICc, num.param=whicro0$num.params,
+          num.iter=whicro0$numIter, converged=!whicro0$convergence,
+          stringsAsFactors = FALSE)
+
+whicrocomp1=data.frame(
+          logLik=whicro1$logLik, AICc=whicro1$AICc, num.param=whicro1$num.params,
+          num.iter=whicro1$numIter, converged=!whicro1$convergence,
+          stringsAsFactors = FALSE)
+
+whicrocomp2=data.frame(
+          logLik=whicro2$logLik, AICc=whicro2$AICc, num.param=whicro2$num.params,
+          num.iter=whicro2$numIter, converged=!whicro2$convergence,
+          stringsAsFactors = FALSE)
+
+whicrocomp3=data.frame(
+          logLik=whicro3$logLik, AICc=whicro3$AICc, num.param=whicro3$num.params,
+          num.iter=whicro3$numIter, converged=!whicro3$convergence,
+          stringsAsFactors = FALSE)
+
+whicrocomp4=data.frame(
+          logLik=whicro4$logLik, AICc=whicro4$AICc, num.param=whicro4$num.params,
+          num.iter=whicro4$numIter, converged=!whicro4$convergence,
+          stringsAsFactors = FALSE)
+
+whicrocomp4b=data.frame(
+          logLik=whicro4b$logLik, AICc=whicro4b$AICc, num.param=whicro4b$num.params,
+          num.iter=whicro4b$numIter, converged=!whicro4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+whicro_output <- rbind(whicrocomp0, whicrocomp1, whicrocomp2, whicrocomp3, whicrocomp4, whicrocomp4b)
+whicro_output <- cbind(model_names,whicro_output) %>% 
+  arrange(desc(-AICc))
+
+whicro.tab0=NULL
+min.AICc=order(whicro_output$AICc)
+whicro.tab0=whicro_output[min.AICc,]
+
+whicro.tab0=cbind(whicro.tab0,
+           delta.AICc=whicro.tab0$AICc-whicro.tab0$AICc[1])
+
+whicro.tab0=cbind(whicro.tab0, 
+           rel.like=exp(-1*whicro.tab0$delta.AICc/2))
+
+whicro.tab0=cbind(whicro.tab0,
+          AIC.weight = whicro.tab0$rel.like/sum(whicro.tab0$rel.like))
+
+whicro.tab0$delta.AICc = round(whicro.tab0$delta.AICc, digits=2)
+whicro.tab0$AIC.weight = round(whicro.tab0$AIC.weight, digits=3)
+whicro.tab0$Species = "WHICRO"
+
+whicro.tab0
+```
+
+## BROROC
+```{r}
+broroccomp0=data.frame(
+          logLik=broroc0$logLik, AICc=broroc0$AICc, num.param=broroc0$num.params,
+          num.iter=broroc0$numIter, converged=!broroc0$convergence,
+          stringsAsFactors = FALSE)
+
+broroccomp1=data.frame(
+          logLik=broroc1$logLik, AICc=broroc1$AICc, num.param=broroc1$num.params,
+          num.iter=broroc1$numIter, converged=!broroc1$convergence,
+          stringsAsFactors = FALSE)
+
+broroccomp2=data.frame(
+          logLik=broroc2$logLik, AICc=broroc2$AICc, num.param=broroc2$num.params,
+          num.iter=broroc2$numIter, converged=!broroc2$convergence,
+          stringsAsFactors = FALSE)
+
+broroccomp3=data.frame(
+          logLik=broroc3$logLik, AICc=broroc3$AICc, num.param=broroc3$num.params,
+          num.iter=broroc3$numIter, converged=!broroc3$convergence,
+          stringsAsFactors = FALSE)
+
+broroccomp4=data.frame(
+          logLik=broroc4$logLik, AICc=broroc4$AICc, num.param=broroc4$num.params,
+          num.iter=broroc4$numIter, converged=!broroc4$convergence,
+          stringsAsFactors = FALSE)
+
+broroccomp4b=data.frame(
+          logLik=broroc4b$logLik, AICc=broroc4b$AICc, num.param=broroc4b$num.params,
+          num.iter=broroc4b$numIter, converged=!broroc4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+broroc_output <- rbind(broroccomp0, broroccomp1, broroccomp2, broroccomp3, broroccomp4, broroccomp4b)
+broroc_output <- cbind(model_names,broroc_output) %>% 
+  arrange(desc(-AICc))
+
+broroc.tab0=NULL
+min.AICc=order(broroc_output$AICc)
+broroc.tab0=broroc_output[min.AICc,]
+
+broroc.tab0=cbind(broroc.tab0,
+           delta.AICc=broroc.tab0$AICc-broroc.tab0$AICc[1])
+
+broroc.tab0=cbind(broroc.tab0, 
+           rel.like=exp(-1*broroc.tab0$delta.AICc/2))
+
+broroc.tab0=cbind(broroc.tab0,
+          AIC.weight = broroc.tab0$rel.like/sum(broroc.tab0$rel.like))
+
+broroc.tab0$delta.AICc = round(broroc.tab0$delta.AICc, digits=2)
+broroc.tab0$AIC.weight = round(broroc.tab0$AIC.weight, digits=3)
+broroc.tab0$Species = "BROROC"
+
+broroc.tab0
+```
+
+## WALSUR
+```{r}
+walsurcomp0=data.frame(
+          logLik=walsur0$logLik, AICc=walsur0$AICc, num.param=walsur0$num.params,
+          num.iter=walsur0$numIter, converged=!walsur0$convergence,
+          stringsAsFactors = FALSE)
+
+walsurcomp1=data.frame(
+          logLik=walsur1$logLik, AICc=walsur1$AICc, num.param=walsur1$num.params,
+          num.iter=walsur1$numIter, converged=!walsur1$convergence,
+          stringsAsFactors = FALSE)
+
+walsurcomp2=data.frame(
+          logLik=walsur2$logLik, AICc=walsur2$AICc, num.param=walsur2$num.params,
+          num.iter=walsur2$numIter, converged=!walsur2$convergence,
+          stringsAsFactors = FALSE)
+
+walsurcomp3=data.frame(
+          logLik=walsur3$logLik, AICc=walsur3$AICc, num.param=walsur3$num.params,
+          num.iter=walsur3$numIter, converged=!walsur3$convergence,
+          stringsAsFactors = FALSE)
+
+walsurcomp4=data.frame(
+          logLik=walsur4$logLik, AICc=walsur4$AICc, num.param=walsur4$num.params,
+          num.iter=walsur4$numIter, converged=!walsur4$convergence,
+          stringsAsFactors = FALSE)
+
+walsurcomp4b=data.frame(
+          logLik=walsur4b$logLik, AICc=walsur4b$AICc, num.param=walsur4b$num.params,
+          num.iter=walsur4b$numIter, converged=!walsur4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+walsur_output <- rbind(walsurcomp0, walsurcomp1, walsurcomp2, walsurcomp3, walsurcomp4, walsurcomp4b)
+walsur_output <- cbind(model_names,walsur_output) %>% 
+  arrange(desc(-AICc))
+
+walsur.tab0=NULL
+min.AICc=order(walsur_output$AICc)
+walsur.tab0=walsur_output[min.AICc,]
+
+walsur.tab0=cbind(walsur.tab0,
+           delta.AICc=walsur.tab0$AICc-walsur.tab0$AICc[1])
+
+walsur.tab0=cbind(walsur.tab0, 
+           rel.like=exp(-1*walsur.tab0$delta.AICc/2))
+
+walsur.tab0=cbind(walsur.tab0,
+          AIC.weight = walsur.tab0$rel.like/sum(walsur.tab0$rel.like))
+
+walsur.tab0$delta.AICc = round(walsur.tab0$delta.AICc, digits=2)
+walsur.tab0$AIC.weight = round(walsur.tab0$AIC.weight, digits=3)
+walsur.tab0$Species = "WALSUR"
+
+walsur.tab0
+```
+
+## SPESAN
+```{r}
+spesancomp0=data.frame(
+          logLik=spesan0$logLik, AICc=spesan0$AICc, num.param=spesan0$num.params,
+          num.iter=spesan0$numIter, converged=!spesan0$convergence,
+          stringsAsFactors = FALSE)
+
+spesancomp1=data.frame(
+          logLik=spesan1$logLik, AICc=spesan1$AICc, num.param=spesan1$num.params,
+          num.iter=spesan1$numIter, converged=!spesan1$convergence,
+          stringsAsFactors = FALSE)
+
+spesancomp2=data.frame(
+          logLik=spesan2$logLik, AICc=spesan2$AICc, num.param=spesan2$num.params,
+          num.iter=spesan2$numIter, converged=!spesan2$convergence,
+          stringsAsFactors = FALSE)
+
+spesancomp3=data.frame(
+          logLik=spesan3$logLik, AICc=spesan3$AICc, num.param=spesan3$num.params,
+          num.iter=spesan3$numIter, converged=!spesan3$convergence,
+          stringsAsFactors = FALSE)
+
+spesancomp4=data.frame(
+          logLik=spesan4$logLik, AICc=spesan4$AICc, num.param=spesan4$num.params,
+          num.iter=spesan4$numIter, converged=!spesan4$convergence,
+          stringsAsFactors = FALSE)
+
+spesancomp4b=data.frame(
+          logLik=spesan4b$logLik, AICc=spesan4b$AICc, num.param=spesan4b$num.params,
+          num.iter=spesan4b$numIter, converged=!spesan4b$convergence,
+          stringsAsFactors = FALSE)
+
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+spesan_output <- rbind(spesancomp0, spesancomp1, spesancomp2, spesancomp3, spesancomp4, spesancomp4b)
+spesan_output <- cbind(model_names,spesan_output) %>% 
+  arrange(desc(-AICc))
+
+spesan.tab0=NULL
+min.AICc=order(spesan_output$AICc)
+spesan.tab0=spesan_output[min.AICc,]
+
+spesan.tab0=cbind(spesan.tab0,
+           delta.AICc=spesan.tab0$AICc-spesan.tab0$AICc[1])
+
+spesan.tab0=cbind(spesan.tab0, 
+           rel.like=exp(-1*spesan.tab0$delta.AICc/2))
+
+spesan.tab0=cbind(spesan.tab0,
+          AIC.weight = spesan.tab0$rel.like/sum(spesan.tab0$rel.like))
+
+spesan.tab0$delta.AICc = round(spesan.tab0$delta.AICc, digits=2)
+spesan.tab0$AIC.weight = round(spesan.tab0$AIC.weight, digits=3)
+spesan.tab0$Species = "SPESAN"
+
+spesan.tab0
+```
+
+## PACSSC
+```{r}
+pacssccomp0=data.frame(
+          logLik=pacssc0$logLik, AICc=pacssc0$AICc, num.param=pacssc0$num.params,
+          num.iter=pacssc0$numIter, converged=!pacssc0$convergence,
+          stringsAsFactors = FALSE)
+
+pacssccomp1=data.frame(
+          logLik=pacssc1$logLik, AICc=pacssc1$AICc, num.param=pacssc1$num.params,
+          num.iter=pacssc1$numIter, converged=!pacssc1$convergence,
+          stringsAsFactors = FALSE)
+
+pacssccomp2=data.frame(
+          logLik=pacssc2$logLik, AICc=pacssc2$AICc, num.param=pacssc2$num.params,
+          num.iter=pacssc2$numIter, converged=!pacssc2$convergence,
+          stringsAsFactors = FALSE)
+
+pacssccomp3=data.frame(
+          logLik=pacssc3$logLik, AICc=pacssc3$AICc, num.param=pacssc3$num.params,
+          num.iter=pacssc3$numIter, converged=!pacssc3$convergence,
+          stringsAsFactors = FALSE)
+
+pacssccomp4=data.frame(
+          logLik=pacssc4$logLik, AICc=pacssc4$AICc, num.param=pacssc4$num.params,
+          num.iter=pacssc4$numIter, converged=!pacssc4$convergence,
+          stringsAsFactors = FALSE)
+
+pacssccomp4b=data.frame(
+          logLik=pacssc4b$logLik, AICc=pacssc4b$AICc, num.param=pacssc4b$num.params,
+          num.iter=pacssc4b$numIter, converged=!pacssc4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+pacssc_output <- rbind(pacssccomp0, pacssccomp1, pacssccomp2, pacssccomp3, pacssccomp4, pacssccomp4b)
+pacssc_output <- cbind(model_names,pacssc_output) %>% 
+  arrange(desc(-AICc))
+
+pacssc.tab0=NULL
+min.AICc=order(pacssc_output$AICc)
+pacssc.tab0=pacssc_output[min.AICc,]
+
+pacssc.tab0=cbind(pacssc.tab0,
+           delta.AICc=pacssc.tab0$AICc-pacssc.tab0$AICc[1])
+
+pacssc.tab0=cbind(pacssc.tab0, 
+           rel.like=exp(-1*pacssc.tab0$delta.AICc/2))
+
+pacssc.tab0=cbind(pacssc.tab0,
+          AIC.weight = pacssc.tab0$rel.like/sum(pacssc.tab0$rel.like))
+
+pacssc.tab0$delta.AICc = round(pacssc.tab0$delta.AICc, digits=2)
+pacssc.tab0$AIC.weight = round(pacssc.tab0$AIC.weight, digits=3)
+pacssc.tab0$Species = "PACSSC"
+
+pacssc.tab0
+```
+
+## YELGOB
+```{r}
+yelgobcomp0=data.frame(
+          logLik=yelgob0$logLik, AICc=yelgob0$AICc, num.param=yelgob0$num.params,
+          num.iter=yelgob0$numIter, converged=!yelgob0$convergence,
+          stringsAsFactors = FALSE)
+
+yelgobcomp1=data.frame(
+          logLik=yelgob1$logLik, AICc=yelgob1$AICc, num.param=yelgob1$num.params,
+          num.iter=yelgob1$numIter, converged=!yelgob1$convergence,
+          stringsAsFactors = FALSE)
+
+yelgobcomp2=data.frame(
+          logLik=yelgob2$logLik, AICc=yelgob2$AICc, num.param=yelgob2$num.params,
+          num.iter=yelgob2$numIter, converged=!yelgob2$convergence,
+          stringsAsFactors = FALSE)
+
+yelgobcomp3=data.frame(
+          logLik=yelgob3$logLik, AICc=yelgob3$AICc, num.param=yelgob3$num.params,
+          num.iter=yelgob3$numIter, converged=!yelgob3$convergence,
+          stringsAsFactors = FALSE)
+
+yelgobcomp4=data.frame(
+          logLik=yelgob4$logLik, AICc=yelgob4$AICc, num.param=yelgob4$num.params,
+          num.iter=yelgob4$numIter, converged=!yelgob4$convergence,
+          stringsAsFactors = FALSE)
+
+yelgobcomp4b=data.frame(
+          logLik=yelgob4b$logLik, AICc=yelgob4b$AICc, num.param=yelgob4b$num.params,
+          num.iter=yelgob4b$numIter, converged=!yelgob4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "Spatial Covariance + Flow + SST + Clam")
+yelgob_output <- rbind(yelgobcomp0, yelgobcomp1, yelgobcomp2, yelgobcomp3, yelgobcomp4, yelgobcomp4b)
+yelgob_output <- cbind(model_names,yelgob_output) %>% 
+  arrange(desc(-AICc))
+
+yelgob.tab0=NULL
+min.AICc=order(yelgob_output$AICc)
+yelgob.tab0=yelgob_output[min.AICc,]
+
+yelgob.tab0=cbind(yelgob.tab0,
+           delta.AICc=yelgob.tab0$AICc-yelgob.tab0$AICc[1])
+
+yelgob.tab0=cbind(yelgob.tab0, 
+           rel.like=exp(-1*yelgob.tab0$delta.AICc/2))
+
+yelgob.tab0=cbind(yelgob.tab0,
+          AIC.weight = yelgob.tab0$rel.like/sum(yelgob.tab0$rel.like))
+
+yelgob.tab0$delta.AICc = round(yelgob.tab0$delta.AICc, digits=2)
+yelgob.tab0$AIC.weight = round(yelgob.tab0$AIC.weight, digits=3)
+yelgob.tab0$Species = "YELGOB"
+
+yelgob.tab0
+```
+
+## STAFLO
+```{r}
+staflocomp0=data.frame(
+          logLik=staflo0$logLik, AICc=staflo0$AICc, num.param=staflo0$num.params,
+          num.iter=staflo0$numIter, converged=!staflo0$convergence,
+          stringsAsFactors = FALSE)
+
+staflocomp1=data.frame(
+          logLik=staflo1$logLik, AICc=staflo1$AICc, num.param=staflo1$num.params,
+          num.iter=staflo1$numIter, converged=!staflo1$convergence,
+          stringsAsFactors = FALSE)
+
+staflocomp2=data.frame(
+          logLik=staflo2$logLik, AICc=staflo2$AICc, num.param=staflo2$num.params,
+          num.iter=staflo2$numIter, converged=!staflo2$convergence,
+          stringsAsFactors = FALSE)
+
+staflocomp3=data.frame(
+          logLik=staflo3$logLik, AICc=staflo3$AICc, num.param=staflo3$num.params,
+          num.iter=staflo3$numIter, converged=!staflo3$convergence,
+          stringsAsFactors = FALSE)
+
+staflocomp4=data.frame(
+          logLik=staflo4$logLik, AICc=staflo4$AICc, num.param=staflo4$num.params,
+          num.iter=staflo4$numIter, converged=!staflo4$convergence,
+          stringsAsFactors = FALSE)
+
+staflocomp4b=data.frame(
+          logLik=staflo4b$logLik, AICc=staflo4b$AICc, num.param=staflo4b$num.params,
+          num.iter=staflo4b$numIter, converged=!staflo4b$convergence,
+          stringsAsFactors = FALSE)
+
+model_names <- c("Null", "Spatial covariance", "Spatial Covariance + Flow",  "Spatial Covariance + SST", "Spatial Covariance + Flow + SST", "+ Clam")
+staflo_output <- rbind(staflocomp0, staflocomp1, staflocomp2, staflocomp3, staflocomp4, staflocomp4b)
+staflo_output <- cbind(model_names,staflo_output) %>% 
+  arrange(desc(-AICc))
+
+staflo.tab0=NULL
+min.AICc=order(staflo_output$AICc)
+staflo.tab0=staflo_output[min.AICc,]
+
+staflo.tab0=cbind(staflo.tab0,
+           delta.AICc=staflo.tab0$AICc-staflo.tab0$AICc[1])
+
+staflo.tab0=cbind(staflo.tab0, 
+           rel.like=exp(-1*staflo.tab0$delta.AICc/2))
+
+staflo.tab0=cbind(staflo.tab0,
+          AIC.weight = staflo.tab0$rel.like/sum(staflo.tab0$rel.like))
+
+staflo.tab0$delta.AICc = round(staflo.tab0$delta.AICc, digits=2)
+staflo.tab0$AIC.weight = round(staflo.tab0$AIC.weight, digits=3)
+staflo.tab0$Species = "STAFLO"
+
+staflo.tab0
+```
+
+
+## AICc table
+```{r}
+# stitch altogether
+aic.tab0 <- bind_rows(lonsme.tab0, strbas.tab0, amesha.tab0,
+                      calton.tab0, broroc.tab0, spesan.tab0,
+                      engsol.tab0, noranc.tab0, whicro.tab0,
+                      yelgob.tab0, baygob.tab0, shiper.tab0,
+                      staflo.tab0, pacher.tab0, plamid.tab0,
+                      jacksm.tab0, pacssc.tab0, walsur.tab0)
+View(aic.tab0)
+```
+
+
+## Coefficients
+Flow (C), SST (C), Residual spatial covariance (Q), Observation error variance (R)
+Maximum likelihood estimates + 95% confidence intervals 
+```{r}
+lonsme4_CIs
+pacher4_CIs
+engsol4_CIs
+baygob4_CIs
+noranc4_CIs
+amesha4_CIs
+strbas4_CIs
+jacksm4_CIs
+calton4_CIs
+plamid4_CIs
+shiper4_CIs
+whicro4_CIs
+broroc4_CIs
+walsur4_CIs
+spesan4_CIs
+pacssc4_CIs
+yelgob4_CIs
+staflo4_CIs
+```
