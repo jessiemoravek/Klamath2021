@@ -246,7 +246,15 @@ mod2_condense.fit = MARSS(condensed_transdat, model=mod2_condense)
 mod2_condense.params =MARSSparamCIs(mod2_condense.fit)
 MARSSparamCIs(mod2_condense.fit)
 ```
-
+```{r}
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod2_condense.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
 
 # Hypothesis 3: Habitat type: Creeks vs ponds vs Klamath
 ## AICc: -8586.263   
@@ -291,6 +299,15 @@ mod3_condense.fit = MARSS(condensed_transdat, model=mod3_condense)
 mod3_condense.params =MARSSparamCIs(mod3_condense.fit)
 MARSSparamCIs(mod3_condense.fit)
 
+```
+```{r}
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod3_condense.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
 ```
 # Hypothesis 4: By watershed
 ## AICc:   -8597.364  
@@ -361,4 +378,12 @@ ggplot(data = mod1_condense_df) +
   scale_x_discrete(labels= labels)
 dev.off()
 ```
-
+```{r}
+par(mfrow=c(5,2), mai=c(0.1,0.5,0.2,0.1), omi=c(0.5,0,0,0))
+  for (j in 1:5) {
+    plot.ts(residuals<-MARSSresiduals(mod4_condense.fit, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual")
+    abline(h = 0, lty = "dashed")
+    acf(residuals,na.action = na.pass)
+  }
+```
