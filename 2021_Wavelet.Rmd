@@ -1,6 +1,8 @@
 ---
 title: "2021_Wavelets"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r, include=F}
